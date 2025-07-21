@@ -23,7 +23,7 @@ export default function SMSLogin() {
                     required
                     errors={[]}
                 />
-                <FormButton loading={false} text="Verify" />
+                <FormButton text="Verify" />
             </form>
         </div>
     );

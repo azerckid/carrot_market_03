@@ -19,9 +19,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="bg-neutral-800">
       <body
-        className={`${orbit.variable} ${orbit.className} antialiased bg-neutral-900 text-white max-w-screen-sm mx-auto`}
+        className={`${orbit.variable} ${orbit.className} antialiased bg-neutral-700 text-white max-w-screen-sm mx-auto min-h-screen`}
       >
         {children}
       </body>
