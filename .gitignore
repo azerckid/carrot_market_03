@@ -51,3 +51,7 @@ next-env.d.ts
 .vscode
 
 /lib/generated/prisma
+
+# scripts
+update_commit_dates.py
+update_commit_dates.sh
