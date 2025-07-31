@@ -6,8 +6,7 @@ import {
   PASSWORD_REGEX_ERROR,
 } from "@/lib/constants";
 import db from "@/lib/db";
-import getSession from "@/lib/session";
-import { redirect } from "next/navigation";
+import { logInUser } from "@/lib/auth";
 import { z } from "zod";
 
 const checkUsername = (username: string) => !username.includes("potato");
@@ -79,7 +78,10 @@ const formSchema = z
     path: ["confirm_password"],
   });
 
-export async function createAccount(prevState: any, formData: FormData) {
+/**
+ * Request 처리: FormData 파싱 및 검증
+ */
+async function validateCreateAccountRequest(formData: FormData) {
   const data = {
     username: formData.get("username"),
     email: formData.get("email"),
@@ -88,24 +90,51 @@ export async function createAccount(prevState: any, formData: FormData) {
   };
   const result = await formSchema.spa(data);
   if (!result.success) {
-    console.log(result.error.flatten());
-    return result.error.flatten();
-  } else {
-    const hashedPassword = await bcrypt.hash(result.data.password, 12);
-    const user = await db.user.create({
-      data: {
-        username: result.data.username,
-        email: result.data.email,
-        password: hashedPassword,
-      },
-      select: {
-        id: true,
-      },
-    });
-    const session = await getSession();
-    session.id = user.id;
-    await session.save();
-    redirect("/profile");
+    return {
+      success: false as const,
+      error: result.error.flatten(),
+    };
   }
+  return {
+    success: true as const,
+    data: result.data,
+  };
+}
+
+/**
+ * Response 처리: DB 저장 및 세션 생성
+ */
+async function createAccountResponse(validatedData: {
+  username: string;
+  email: string;
+  password: string;
+}) {
+  const hashedPassword = await bcrypt.hash(validatedData.password, 12);
+  const user = await db.user.create({
+    data: {
+      username: validatedData.username,
+      email: validatedData.email,
+      password: hashedPassword,
+    },
+    select: {
+      id: true,
+    },
+  });
+  await logInUser(user.id);
+}
+
+/**
+ * 회원가입 메인 함수
+ */
+export async function createAccount(prevState: any, formData: FormData) {
+  // Request 처리: 검증
+  const validationResult = await validateCreateAccountRequest(formData);
+  if (!validationResult.success) {
+    console.log(validationResult.error);
+    return validationResult.error;
+  }
+
+  // Response 처리: DB 저장 및 로그인
+  await createAccountResponse(validationResult.data);
 }
 

@@ -1,6 +1,5 @@
 import db from "@/lib/db";
-import getSession from "@/lib/session";
-import { redirect } from "next/navigation";
+import { logInUser } from "@/lib/auth";
 import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -78,10 +77,8 @@ export async function GET(request: NextRequest) {
     },
   });
   if (user) {
-    const session = await getSession();
-    session.id = user.id;
-    await session.save();
-    return redirect("/profile");
+    await logInUser(user.id);
+    return;
   }
   let username = login;
   const existingUser = await db.user.findUnique({
@@ -106,9 +103,7 @@ export async function GET(request: NextRequest) {
       id: true,
     },
   });
-  const session = await getSession();
-  session.id = newUser.id;
-  await session.save();
-  return redirect("/profile");
+  await logInUser(newUser.id);
+  return;
 }
 
