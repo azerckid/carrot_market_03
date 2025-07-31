@@ -1,12 +1,14 @@
 import db from "@/lib/db";
 import getSession from "@/lib/session";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   if (!code) {
-    return notFound();
+    return new Response(null, {
+      status: 400,
+    });
   }
   const accessTokenParams = new URLSearchParams({
     client_id: process.env.GITHUB_CLIENT_ID!,
@@ -20,8 +22,13 @@ export async function GET(request: NextRequest) {
       Accept: "application/json",
     },
   });
+  if (!accessTokenResponse.ok) {
+    return new Response(null, {
+      status: 400,
+    });
+  }
   const { error, access_token } = await accessTokenResponse.json();
-  if (error) {
+  if (error || !access_token) {
     return new Response(null, {
       status: 400,
     });
@@ -32,14 +39,34 @@ export async function GET(request: NextRequest) {
     },
     cache: "no-cache",
   });
+  if (!userProfileResponse.ok) {
+    return new Response(null, {
+      status: 400,
+    });
+  }
   const { id, avatar_url, login } = await userProfileResponse.json();
+  if (!id || !login) {
+    return new Response(null, {
+      status: 400,
+    });
+  }
   const emailResponse = await fetch("https://api.github.com/user/emails", {
     headers: {
       Authorization: `Bearer ${access_token}`,
     },
     cache: "no-cache",
   });
+  if (!emailResponse.ok) {
+    return new Response(null, {
+      status: 400,
+    });
+  }
   const emails = await emailResponse.json();
+  if (!Array.isArray(emails) || emails.length === 0) {
+    return new Response(null, {
+      status: 400,
+    });
+  }
   const emailData = emails.find((email: any) => email.primary === true && email.verified === true) || emails[0];
   const email = emailData?.email;
   const user = await db.user.findUnique({

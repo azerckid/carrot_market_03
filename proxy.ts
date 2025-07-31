@@ -10,13 +10,18 @@ const publicOnlyUrls: Routes = {
   "/login": true,
   "/sms": true,
   "/create-account": true,
-  "/github/start": true,
-  "/github/complete": true,
 };
 
 export async function proxy(request: NextRequest) {
   const session = await getSession();
-  const exists = publicOnlyUrls[request.nextUrl.pathname];
+  const pathname = request.nextUrl.pathname;
+
+  // GitHub OAuth 경로는 모든 사용자가 접근 가능
+  if (pathname.startsWith("/github/")) {
+    return;
+  }
+
+  const exists = publicOnlyUrls[pathname];
   if (!session.id) {
     if (!exists) {
       return NextResponse.redirect(new URL("/", request.url));
