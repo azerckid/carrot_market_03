@@ -17,6 +17,9 @@ interface ActionState {
   token: boolean;
 }
 
+// 6자리 숫자 토큰의 범위: 10^6 = 1,000,000 (100000 ~ 999999)
+10 * 10 * 10 * 10 * 10 * 10;
+
 export async function smsLogIn(prevState: ActionState, formData: FormData) {
   const phone = formData.get("phone");
   const token = formData.get("token");
