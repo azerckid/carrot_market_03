@@ -50,7 +50,13 @@ export default async function ProductDetail({
   return (
     <div>
       <div className="relative aspect-square">
-        <Image fill src={product.photo} alt={product.title} unoptimized />
+        <Image
+          className="object-cover"
+          fill
+          src={product.photo}
+          alt={product.title}
+          unoptimized
+        />
         <Link
           href="/products"
           className="absolute left-5 top-5 bg-black/50 hover:bg-black/70 rounded-full p-2 transition-colors"
