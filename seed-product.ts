@@ -9,55 +9,62 @@ const db = new PrismaClient({ adapter });
 
 async function seedProduct() {
   try {
-    // userId 2번 확인
+    // userId 3번 확인
     const user = await db.user.findUnique({
-      where: { id: 2 },
+      where: { id: 3 },
     });
 
     if (!user) {
-      console.log("User ID 2 not found. Please create user with ID 2 first.");
+      console.log("User ID 3 not found. Please create user with ID 3 first.");
       await db.$disconnect();
       return;
     }
 
     console.log(`Using user ID: ${user.id}`);
 
-    // Speaker 제품 추가
+    // Earphone 제품 추가
     const products = await db.product.createMany({
       data: [
         {
-          title: "프리미엄 블루투스 스피커",
-          price: 199000,
-          photo: "/speaker_01.jpg",
-          description: "고품질 사운드를 제공하는 프리미엄 블루투스 스피커입니다. 강력한 베이스와 선명한 고음으로 음악을 생생하게 즐길 수 있습니다. 방수 기능이 있어 실내외 어디서나 사용 가능하며, 24시간 연속 재생이 가능합니다. 우아한 디자인과 뛰어난 음질을 자랑하는 프리미엄 스피커입니다.",
-          userId: 2,
+          title: "프리미엄 무선 이어폰",
+          price: 179000,
+          photo: "/earphone_01.jpg",
+          description: "고음질 무선 이어폰입니다. 액티브 노이즈 캔슬링 기능이 탑재되어 있어 외부 소음을 효과적으로 차단합니다. 30시간 연속 재생이 가능하며, 빠른 충전 기능을 지원합니다. 편안한 착용감과 뛰어난 음질을 자랑하는 프리미엄 이어폰입니다. 운동 중에도 안정적으로 착용할 수 있습니다.",
+          userId: 3,
         },
         {
-          title: "포터블 무선 스피커",
-          price: 149000,
-          photo: "/speaker_02.jpg",
-          description: "휴대하기 편한 포터블 무선 스피커입니다. 컴팩트한 크기지만 강력한 사운드를 제공하며, 블루투스 5.0을 지원하여 안정적인 연결이 가능합니다. 긴 배터리 수명과 빠른 충전 기능을 갖추고 있어 야외 활동이나 여행에 최적화되어 있습니다. 다양한 색상으로 제공됩니다.",
-          userId: 2,
+          title: "스포츠 무선 이어폰",
+          price: 129000,
+          photo: "/earphone_02.jpg",
+          description: "운동에 최적화된 스포츠 무선 이어폰입니다. 방수 및 방진 기능이 있어 땀과 비에 강하며, 안정적인 착용감으로 격렬한 운동 중에도 떨어지지 않습니다. 강력한 베이스와 선명한 음질을 제공하며, 25시간 연속 재생이 가능합니다. 다양한 이어팁이 포함되어 있어 개인에 맞게 조절할 수 있습니다.",
+          userId: 3,
         },
         {
-          title: "미니 블루투스 스피커",
+          title: "경량 블루투스 이어폰",
           price: 89000,
-          photo: "/speaker_03.jpg",
-          description: "작고 가벼운 미니 블루투스 스피커입니다. 작은 크기지만 놀라운 음질을 제공하며, 한 손에 쏙 들어오는 크기로 어디서나 음악을 즐길 수 있습니다. 360도 사운드를 지원하여 어느 방향에서도 균일한 음질을 경험할 수 있습니다. 합리적인 가격에 고품질을 경험할 수 있습니다.",
-          userId: 2,
+          photo: "/earphone_03.jpg",
+          description: "가볍고 휴대하기 편한 블루투스 이어폰입니다. 컴팩트한 디자인으로 휴대성이 뛰어나며, 20시간의 긴 배터리 수명을 자랑합니다. 통화 품질이 우수하여 업무용으로도 적합합니다. 빠른 페어링과 안정적인 연결을 지원하며, 다양한 색상으로 제공됩니다. 합리적인 가격에 고품질을 경험할 수 있습니다.",
+          userId: 3,
         },
         {
-          title: "파티 스피커",
-          price: 249000,
-          photo: "/speaker_04.jpg",
-          description: "파티와 모임에 최적화된 대형 블루투스 스피커입니다. 강력한 출력으로 넓은 공간에서도 생생한 음악을 즐길 수 있으며, LED 조명이 내장되어 있어 분위기를 더욱 살려줍니다. 마이크 입력을 지원하여 노래방이나 프레젠테이션에도 활용 가능합니다. 내구성이 뛰어나 실내외 모두 사용 가능합니다.",
-          userId: 2,
+          title: "노이즈 캔슬링 이어폰",
+          price: 159000,
+          photo: "/earphone_04.jpg",
+          description: "고급 노이즈 캔슬링 기술이 적용된 무선 이어폰입니다. 주변 소음을 효과적으로 차단하여 집중력 있는 음악 감상을 가능하게 합니다. 투명 모드를 지원하여 필요시 주변 소리를 들을 수 있습니다. 28시간 연속 재생이 가능하며, 무선 충전 케이스를 포함하고 있습니다. 프리미엄 품질의 사운드를 제공합니다.",
+          userId: 3,
+        },
+        {
+          title: "베이스 강화 이어폰",
+          price: 109000,
+          photo: "/earphone_05.jpg",
+          description: "강력한 베이스를 제공하는 무선 이어폰입니다. 댄스 음악과 힙합을 즐기는 분들에게 최적화되어 있으며, 깊고 풍부한 저음을 경험할 수 있습니다. 22시간 연속 재생이 가능하며, 빠른 충전 기능을 지원합니다. 편안한 착용감과 뛰어난 음질을 자랑합니다. 합리적인 가격에 고품질 사운드를 즐길 수 있습니다.",
+          userId: 3,
         },
       ],
     });
 
     console.log("Products created successfully:");
-    console.log(`Created ${products.count} speaker products for user ID 2`);
+    console.log(`Created ${products.count} earphone products for user ID 3`);
 
     // 모든 제품 조회
     const allProducts = await db.product.findMany();
