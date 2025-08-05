@@ -15,6 +15,7 @@ export default function ProductList({ initialProducts }: ProductListProps) {
   const [page, setPage] = useState(0);
   const [isLastPage, setIsLastPage] = useState(false);
   const trigger = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       async (
@@ -48,6 +49,7 @@ export default function ProductList({ initialProducts }: ProductListProps) {
       observer.disconnect();
     };
   }, [page]);
+
   return (
     <div className="p-5 pb-32 flex flex-col gap-5">
       {products.map((product: InitialProducts[number]) => (
