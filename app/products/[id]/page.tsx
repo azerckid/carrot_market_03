@@ -1,7 +1,8 @@
 import db from "@/lib/db";
 import getSession from "@/lib/session";
 import { formatToWon } from "@/lib/utils";
-import { ArrowLeftIcon, UserIcon } from "@heroicons/react/24/solid";
+import { UserIcon } from "@heroicons/react/24/solid";
+import BackButton from "@/components/back-button";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -57,12 +58,7 @@ export default async function ProductDetail({
           alt={product.title}
           unoptimized
         />
-        <Link
-          href="/products"
-          className="absolute left-5 top-5 bg-black/50 hover:bg-black/70 rounded-full p-2 transition-colors"
-        >
-          <ArrowLeftIcon className="size-6 text-white" />
-        </Link>
+        <BackButton href="/products" />
       </div>
       <div className="p-5 flex items-center gap-3 border-b border-neutral-700">
         <div className="size-10 overflow-hidden rounded-full">

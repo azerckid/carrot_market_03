@@ -2,6 +2,7 @@
 
 import Button from "@/components/button";
 import Input from "@/components/input";
+import BackButton from "@/components/back-button";
 import { PhotoIcon } from "@heroicons/react/24/solid";
 import { useState } from "react";
 
@@ -10,6 +11,9 @@ export default function AddProduct() {
     const onImageChange = () => { };
     return (
         <div>
+            <div className="relative">
+                <BackButton href="/products" />
+            </div>
             <form className="p-5 flex flex-col gap-5">
                 <label
                     htmlFor="photo"
