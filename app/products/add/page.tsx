@@ -4,11 +4,15 @@ import Button from "@/components/button";
 import Input from "@/components/input";
 import BackButton from "@/components/back-button";
 import { PhotoIcon, XMarkIcon } from "@heroicons/react/24/solid";
-import { useState } from "react";
+import { useState, useActionState } from "react";
 import { uploadProduct } from "./actions";
 
 export default function AddProduct() {
     const [preview, setPreview] = useState("");
+    const [clientError, setClientError] = useState("");
+    const [state, formAction] = useActionState(uploadProduct, null);
+    const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+
     const onImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const {
             target: { files },
@@ -17,23 +21,41 @@ export default function AddProduct() {
             return;
         }
         const file = files[0];
+
+        // 이미지 파일 타입 검증
+        if (!file.type.startsWith("image/")) {
+            setClientError("이미지 파일만 업로드 가능합니다.");
+            event.target.value = "";
+            return;
+        }
+
+        // 파일 크기 검증 (1MB)
+        if (file.size > MAX_FILE_SIZE) {
+            setClientError("파일 크기는 최대 1MB까지 가능합니다.");
+            event.target.value = "";
+            return;
+        }
+
+        setClientError("");
         const url = URL.createObjectURL(file);
         setPreview(url);
     };
     const onImageRemove = () => {
         setPreview("");
+        setClientError("");
         // input 파일 선택 초기화
         const fileInput = document.getElementById("photo") as HTMLInputElement;
         if (fileInput) {
             fileInput.value = "";
         }
     };
+
     return (
         <div>
             <div className="relative">
                 <BackButton href="/products" />
             </div>
-            <form action={uploadProduct} className="p-5 flex flex-col gap-5">
+            <form action={formAction} className="p-5 flex flex-col gap-5">
                 <div className="relative">
                     <label
                         htmlFor="photo"
@@ -61,6 +83,11 @@ export default function AddProduct() {
                         </button>
                     )}
                 </div>
+                {(clientError || state?.error) && (
+                    <div className="text-red-500 text-sm text-center">
+                        {clientError || state?.error}
+                    </div>
+                )}
                 <input
                     onChange={onImageChange}
                     type="file"
