@@ -4,13 +4,14 @@ import Button from "@/components/button";
 import Input from "@/components/input";
 import BackButton from "@/components/back-button";
 import { PhotoIcon, XMarkIcon } from "@heroicons/react/24/solid";
-import { useState, useActionState } from "react";
+import { useState } from "react";
+import { useFormState } from "react-dom";
 import { uploadProduct } from "./actions";
 
 export default function AddProduct() {
     const [preview, setPreview] = useState("");
     const [clientError, setClientError] = useState("");
-    const [state, formAction] = useActionState(uploadProduct, null);
+    const [state, action] = useFormState(uploadProduct, null);
     const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
 
     const onImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,7 +56,7 @@ export default function AddProduct() {
             <div className="relative">
                 <BackButton href="/products" />
             </div>
-            <form action={formAction} className="p-5 flex flex-col gap-5">
+            <form action={action} className="p-5 flex flex-col gap-5">
                 <div className="relative">
                     <label
                         htmlFor="photo"
@@ -69,6 +70,7 @@ export default function AddProduct() {
                                 <PhotoIcon className="w-20" />
                                 <div className="text-neutral-400 text-sm">
                                     사진을 추가해주세요.
+                                    {state?.fieldErrors.photo}
                                 </div>
                             </>
                         ) : null}
@@ -83,9 +85,14 @@ export default function AddProduct() {
                         </button>
                     )}
                 </div>
-                {(clientError || state?.error) && (
+                {clientError && (
                     <div className="text-red-500 text-sm text-center">
-                        {clientError || state?.error}
+                        {clientError}
+                    </div>
+                )}
+                {state?.formErrors && state.formErrors.length > 0 && (
+                    <div className="text-red-500 text-sm text-center">
+                        {state.formErrors[0]}
                     </div>
                 )}
                 <input
@@ -96,13 +103,26 @@ export default function AddProduct() {
                     accept="image/*"
                     className="hidden"
                 />
-                <Input name="title" required placeholder="제목" type="text" />
-                <Input name="price" type="number" required placeholder="가격" />
+                <Input
+                    name="title"
+                    required
+                    placeholder="제목"
+                    type="text"
+                    errors={state?.fieldErrors.title}
+                />
+                <Input
+                    name="price"
+                    type="number"
+                    required
+                    placeholder="가격"
+                    errors={state?.fieldErrors.price}
+                />
                 <Input
                     name="description"
                     type="text"
                     required
                     placeholder="자세한 설명"
+                    errors={state?.fieldErrors.description}
                 />
                 <Button text="작성 완료" />
             </form>

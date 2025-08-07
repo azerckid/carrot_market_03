@@ -1,38 +1,63 @@
 "use server";
 
-const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+import { z } from "zod";
+import fs from "fs/promises";
+import db from "@/lib/db";
+import getSession from "@/lib/session";
+import { redirect } from "next/navigation";
 
-export async function uploadProduct(
-  prevState: { error?: string } | null,
-  formData: FormData
-) {
-  const photo = formData.get("photo");
+const productSchema = z.object({
+  photo: z.string({
+    required_error: "Photo is required",
+  }),
+  title: z.string({
+    required_error: "Title is required",
+  }),
+  description: z.string({
+    required_error: "Description is required",
+  }),
+  price: z.coerce.number({
+    required_error: "Price is required",
+  }),
+});
 
-  // 파일 타입 검증
-  if (photo instanceof File) {
-    // 이미지 파일 타입 검증
-    if (!photo.type.startsWith("image/")) {
-      return {
-        error: "이미지 파일만 업로드 가능합니다.",
-      };
-    }
-
-    // 파일 크기 검증
-    if (photo.size > MAX_FILE_SIZE) {
-      return {
-        error: "파일 크기는 최대 1MB까지 가능합니다.",
-      };
-    }
-  }
-
+export async function uploadProduct(_: any, formData: FormData) {
   const data = {
-    photo: photo,
+    photo: formData.get("photo"),
     title: formData.get("title"),
     price: formData.get("price"),
     description: formData.get("description"),
   };
-  console.log(data);
-
-  return null;
+  if (data.photo instanceof File) {
+    const photoData = await data.photo.arrayBuffer();
+    await fs.appendFile(`./public/${data.photo.name}`, Buffer.from(photoData));
+    data.photo = `/${data.photo.name}`;
+  }
+  const result = productSchema.safeParse(data);
+  if (!result.success) {
+    return result.error.flatten();
+  } else {
+    const session = await getSession();
+    if (session.id) {
+      const product = await db.product.create({
+        data: {
+          title: result.data.title,
+          description: result.data.description,
+          price: result.data.price,
+          photo: result.data.photo,
+          user: {
+            connect: {
+              id: session.id,
+            },
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+      redirect(`/products/${product.id}`);
+      //redirect("/products")
+    }
+  }
 }
 
