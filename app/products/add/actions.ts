@@ -1,10 +1,10 @@
 "use server";
 
 import { z } from "zod";
-import fs from "fs/promises";
 import db from "@/lib/db";
 import getSession from "@/lib/session";
 import { redirect } from "next/navigation";
+import cloudinary from "@/lib/cloudinary";
 
 const productSchema = z.object({
   photo: z.string({
@@ -29,9 +29,17 @@ export async function uploadProduct(_: any, formData: FormData) {
     description: formData.get("description"),
   };
   if (data.photo instanceof File) {
-    const photoData = await data.photo.arrayBuffer();
-    await fs.appendFile(`./public/${data.photo.name}`, Buffer.from(photoData));
-    data.photo = `/${data.photo.name}`;
+    const bytes = await data.photo.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    const base64 = buffer.toString("base64");
+    const dataURI = `data:${data.photo.type};base64,${base64}`;
+
+    const uploadResult = await cloudinary.uploader.upload(dataURI, {
+      folder: "carrot-market",
+    });
+
+    data.photo = uploadResult.secure_url;
   }
   const result = productSchema.safeParse(data);
   if (!result.success) {

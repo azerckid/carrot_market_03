@@ -56,7 +56,6 @@ export default async function ProductDetail({
           fill
           src={product.photo}
           alt={product.title}
-          unoptimized
         />
         <BackButton href="/products" />
       </div>
@@ -69,7 +68,6 @@ export default async function ProductDetail({
               height={40}
               alt={product.user.username}
               className="rounded-full"
-              unoptimized
             />
           ) : (
             <UserIcon className="size-10" />
