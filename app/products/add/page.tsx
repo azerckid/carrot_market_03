@@ -5,14 +5,26 @@ import Input from "@/components/input";
 import BackButton from "@/components/back-button";
 import { PhotoIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import { useState } from "react";
-import { useFormState } from "react-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { ProductType, productSchema } from "./schema";
 import { uploadProduct } from "./actions";
 
 export default function AddProduct() {
     const [preview, setPreview] = useState("");
     const [clientError, setClientError] = useState("");
-    const [state, action] = useFormState(uploadProduct, null);
+    const [file, setFile] = useState<File | null>(null);
     const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+
+    const {
+        register,
+        handleSubmit,
+        setValue,
+        setError,
+        formState: { errors },
+    } = useForm<ProductType>({
+        resolver: zodResolver(productSchema),
+    });
 
     const onImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const {
@@ -38,16 +50,39 @@ export default function AddProduct() {
         }
 
         setClientError("");
+        setFile(file);
         const url = URL.createObjectURL(file);
         setPreview(url);
     };
     const onImageRemove = () => {
         setPreview("");
         setClientError("");
+        setFile(null);
+        setValue("photo", "");
         // input 파일 선택 초기화
         const fileInput = document.getElementById("photo") as HTMLInputElement;
         if (fileInput) {
             fileInput.value = "";
+        }
+    };
+
+    const onValid = async (data: ProductType) => {
+        if (!file) {
+            setClientError("이미지를 선택해주세요.");
+            return;
+        }
+
+        // FormData 생성 및 서버 액션 호출
+        // 서버 액션에서 Cloudinary 업로드 처리
+        const formData = new FormData();
+        formData.set("photo", file);
+        formData.set("title", data.title);
+        formData.set("price", data.price.toString());
+        formData.set("description", data.description);
+
+        const errors = await uploadProduct(formData);
+        if (errors) {
+            // setError("")  // 향후 서버 에러를 폼에 연결할 수 있도록 준비
         }
     };
 
@@ -56,7 +91,7 @@ export default function AddProduct() {
             <div className="relative">
                 <BackButton href="/products" />
             </div>
-            <form action={action} className="p-5 flex flex-col gap-5">
+            <form onSubmit={handleSubmit(onValid)} className="p-5 flex flex-col gap-5">
                 <div className="relative">
                     <label
                         htmlFor="photo"
@@ -70,7 +105,7 @@ export default function AddProduct() {
                                 <PhotoIcon className="w-20" />
                                 <div className="text-neutral-400 text-sm">
                                     사진을 추가해주세요.
-                                    {state?.fieldErrors.photo}
+                                    {errors.photo?.message}
                                 </div>
                             </>
                         ) : null}
@@ -90,39 +125,30 @@ export default function AddProduct() {
                         {clientError}
                     </div>
                 )}
-                {state?.formErrors && state.formErrors.length > 0 && (
-                    <div className="text-red-500 text-sm text-center">
-                        {state.formErrors[0]}
-                    </div>
-                )}
                 <input
                     onChange={onImageChange}
                     type="file"
                     id="photo"
-                    name="photo"
                     accept="image/*"
                     className="hidden"
                 />
                 <Input
-                    name="title"
-                    required
+                    {...register("title")}
                     placeholder="제목"
                     type="text"
-                    errors={state?.fieldErrors.title}
+                    errors={[errors.title?.message ?? ""]}
                 />
                 <Input
-                    name="price"
+                    {...register("price")}
                     type="number"
-                    required
                     placeholder="가격"
-                    errors={state?.fieldErrors.price}
+                    errors={[errors.price?.message ?? ""]}
                 />
                 <Input
-                    name="description"
+                    {...register("description")}
                     type="text"
-                    required
                     placeholder="자세한 설명"
-                    errors={state?.fieldErrors.description}
+                    errors={[errors.description?.message ?? ""]}
                 />
                 <Button text="작성 완료" />
             </form>

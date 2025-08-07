@@ -16,7 +16,6 @@ async function getIsOwner(userId: number) {
 }
 
 async function getProduct(id: number) {
-  await new Promise((resolve) => setTimeout(resolve, 1000));
   const product = await db.product.findUnique({
     where: {
       id,
