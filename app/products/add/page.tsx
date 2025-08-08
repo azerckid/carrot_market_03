@@ -20,10 +20,13 @@ export default function AddProduct() {
         register,
         handleSubmit,
         setValue,
-        setError,
         formState: { errors },
     } = useForm<ProductType>({
         resolver: zodResolver(productSchema),
+    });
+
+    const { onChange: onPhotoChange, ...photoRegister } = register("photo", {
+        required: "사진을 선택해주세요.",
     });
 
     const onImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,8 +54,11 @@ export default function AddProduct() {
 
         setClientError("");
         setFile(file);
+        setValue("photo", file.name, { shouldValidate: true, shouldDirty: true });
         const url = URL.createObjectURL(file);
         setPreview(url);
+        // React Hook Form의 onChange 호출
+        onPhotoChange(event);
     };
     const onImageRemove = () => {
         setPreview("");
@@ -125,6 +131,7 @@ export default function AddProduct() {
                     </div>
                 )}
                 <input
+                    {...photoRegister}
                     onChange={onImageChange}
                     type="file"
                     id="photo"
