@@ -1,11 +1,11 @@
 "use client";
 
-import Button from "@/components/button";
-import Input from "@/components/input";
-import BackButton from "@/components/back-button";
-import { PhotoIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import Input from "@/components/input";
+import Button from "@/components/button";
+import BackButton from "@/components/back-button";
+import { PhotoIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ProductType, productSchema } from "./schema";
 import { uploadProduct } from "./actions";
@@ -65,7 +65,6 @@ export default function AddProduct() {
             fileInput.value = "";
         }
     };
-
     const onValid = async (data: ProductType) => {
         if (!file) {
             setClientError("이미지를 선택해주세요.");
