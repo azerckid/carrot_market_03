@@ -12,70 +12,52 @@ import { uploadProduct } from "./actions";
 
 export default function AddProduct() {
     const [preview, setPreview] = useState("");
-    const [clientError, setClientError] = useState("");
-    const [file, setFile] = useState<File | null>(null);
-    const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
 
     const {
         register,
         handleSubmit,
-        setValue,
+        watch,
+        setError,
         formState: { errors },
     } = useForm<ProductType>({
         resolver: zodResolver(productSchema),
     });
 
-    const { onChange: onPhotoChange, ...photoRegister } = register("photo", {
-        required: "사진을 선택해주세요.",
-    });
+    // React Hook Form으로 파일 입력 등록
+    const { onChange: onPhotoChange, ...photoRegister } = register("photo");
 
+    // 파일 입력 값 감시 (미리보기용)
+    const photoFileList = watch("photo");
+
+    // 파일이 변경될 때마다 미리보기 업데이트
     const onImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const {
-            target: { files },
-        } = event;
-        if (!files) {
-            return;
-        }
-        const file = files[0];
-
-        // 이미지 파일 타입 검증
-        if (!file.type.startsWith("image/")) {
-            setClientError("이미지 파일만 업로드 가능합니다.");
-            event.target.value = "";
-            return;
-        }
-
-        // 파일 크기 검증 (1MB)
-        if (file.size > MAX_FILE_SIZE) {
-            setClientError("파일 크기는 최대 1MB까지 가능합니다.");
-            event.target.value = "";
-            return;
-        }
-
-        setClientError("");
-        setFile(file);
-        setValue("photo", file.name, { shouldValidate: true, shouldDirty: true });
-        const url = URL.createObjectURL(file);
-        setPreview(url);
-        // React Hook Form의 onChange 호출
+        // React Hook Form의 onChange 먼저 호출 (검증 실행)
         onPhotoChange(event);
+
+        // 미리보기 처리
+        const files = event.target.files;
+        if (files && files.length > 0) {
+            const file = files[0];
+            const url = URL.createObjectURL(file);
+            setPreview(url);
+        } else {
+            setPreview("");
+        }
     };
     const onImageRemove = () => {
         setPreview("");
-        setClientError("");
-        setFile(null);
-        setValue("photo", "");
         // input 파일 선택 초기화
         const fileInput = document.getElementById("photo") as HTMLInputElement;
         if (fileInput) {
             fileInput.value = "";
         }
+        // React Hook Form에서도 제거 (setValue로 빈 FileList 설정)
+        // 주의: FileList는 직접 생성할 수 없으므로, input을 리셋하는 것으로 충분
     };
+
     const onValid = async (data: ProductType) => {
-        if (!file) {
-            setClientError("이미지를 선택해주세요.");
-            return;
-        }
+        // React Hook Form이 검증을 통과했으므로 파일이 존재함
+        const file = data.photo[0];
 
         // FormData 생성 및 서버 액션 호출
         // 서버 액션에서 Cloudinary 업로드 처리
@@ -86,8 +68,38 @@ export default function AddProduct() {
         formData.set("description", data.description);
 
         const errors = await uploadProduct(formData);
-        if (errors) {
-            // setError("")  // 향후 서버 에러를 폼에 연결할 수 있도록 준비
+        if (errors && "fieldErrors" in errors) {
+            // 서버 에러를 폼에 연결
+            const fieldErrors = errors.fieldErrors as {
+                photo?: string[];
+                title?: string[];
+                price?: string[];
+                description?: string[];
+            };
+            if (fieldErrors.photo) {
+                setError("photo", {
+                    type: "server",
+                    message: fieldErrors.photo[0],
+                });
+            }
+            if (fieldErrors.title) {
+                setError("title", {
+                    type: "server",
+                    message: fieldErrors.title[0],
+                });
+            }
+            if (fieldErrors.price) {
+                setError("price", {
+                    type: "server",
+                    message: fieldErrors.price[0],
+                });
+            }
+            if (fieldErrors.description) {
+                setError("description", {
+                    type: "server",
+                    message: fieldErrors.description[0],
+                });
+            }
         }
     };
 
@@ -125,11 +137,6 @@ export default function AddProduct() {
                         </button>
                     )}
                 </div>
-                {clientError && (
-                    <div className="text-red-500 text-sm text-center">
-                        {clientError}
-                    </div>
-                )}
                 <input
                     {...photoRegister}
                     onChange={onImageChange}
