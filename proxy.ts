@@ -16,6 +16,11 @@ export async function proxy(request: NextRequest) {
   const session = await getSession();
   const pathname = request.nextUrl.pathname;
 
+  // /products 경로를 /home으로 리다이렉트
+  if (pathname === "/products") {
+    return NextResponse.redirect(new URL("/home", request.url));
+  }
+
   // GitHub OAuth 경로는 모든 사용자가 접근 가능
   if (pathname.startsWith("/github/")) {
     return;
@@ -28,7 +33,7 @@ export async function proxy(request: NextRequest) {
     }
   } else {
     if (exists) {
-      return NextResponse.redirect(new URL("/products", request.url));
+      return NextResponse.redirect(new URL("/home", request.url));
     }
   }
 }

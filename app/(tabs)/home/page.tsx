@@ -22,7 +22,7 @@ async function getInitialProducts() {
 
 export type InitialProducts = Awaited<ReturnType<typeof getInitialProducts>>;
 
-export default async function Products() {
+export default async function Home() {
   const initialProducts = await getInitialProducts();
   return (
     <div>

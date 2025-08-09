@@ -22,13 +22,13 @@ export default function TabBar() {
   return (
     <div className="fixed bottom-0 w-full max-w-screen-sm mx-auto bg-neutral-800 border-t border-neutral-700">
       <div className="flex justify-around items-center py-3 *:text-white">
-        <Link href="/products" className="flex flex-col items-center gap-1">
-          {pathname === "/products" ? (
+        <Link href="/home" className="flex flex-col items-center gap-1">
+          {pathname === "/home" ? (
             <SolidHomeIcon className="w-7 h-7" />
           ) : (
             <OutlineHomeIcon className="w-7 h-7 text-gray-400" />
           )}
-          <span className={`text-xs ${pathname !== "/products" && "text-gray-400"}`}>홈</span>
+          <span className={`text-xs ${pathname !== "/home" && "text-gray-400"}`}>홈</span>
         </Link>
         <Link href="/life" className="flex flex-col items-center gap-1">
           {pathname === "/life" ? (
