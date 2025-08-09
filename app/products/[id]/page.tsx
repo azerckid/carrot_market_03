@@ -3,6 +3,7 @@ import getSession from "@/lib/session";
 import { formatToWon } from "@/lib/utils";
 import { UserIcon } from "@heroicons/react/24/solid";
 import BackButton from "@/components/back-button";
+import DeleteProductButton from "@/components/delete-product-button";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -85,9 +86,7 @@ export default async function ProductDetail({
           {formatToWon(product.price)}원
         </span>
         {isOwner ? (
-          <button className="bg-red-500 px-5 py-2.5 rounded-md text-white font-semibold">
-            Delete product
-          </button>
+          <DeleteProductButton productId={productId} />
         ) : null}
         <Link
           className="bg-orange-500 px-5 py-2.5 rounded-md text-white font-semibold"

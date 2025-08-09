@@ -4,27 +4,11 @@ import db from "@/lib/db";
 import getSession from "@/lib/session";
 import { redirect } from "next/navigation";
 import cloudinary from "@/lib/cloudinary";
-import { z } from "zod";
-
-// 서버 액션용 스키마 (파일은 이미 업로드되어 URL로 변환됨)
-const serverProductSchema = z.object({
-  photo: z.string({
-    required_error: "Photo is required",
-  }),
-  title: z.string({
-    required_error: "Title is required",
-  }),
-  description: z.string({
-    required_error: "Description is required",
-  }),
-  price: z.coerce.number({
-    required_error: "Price is required",
-  }),
-});
+import { serverProductSchema } from "./server-schema";
 
 export async function uploadProduct(formData: FormData) {
   const photoFile = formData.get("photo");
-  
+
   // 파일 검증
   if (!(photoFile instanceof File)) {
     return {
@@ -44,38 +28,43 @@ export async function uploadProduct(formData: FormData) {
     folder: "carrot-market",
   });
 
-  const data = {
+  const productData = {
     photo: uploadResult.secure_url,
     title: formData.get("title"),
     price: formData.get("price"),
     description: formData.get("description"),
   };
 
-  const result = serverProductSchema.safeParse(data);
+  const result = serverProductSchema.safeParse(productData);
   if (!result.success) {
     return result.error.flatten();
-  } else {
-    const session = await getSession();
-    if (session.id) {
-      const product = await db.product.create({
-        data: {
-          title: result.data.title,
-          description: result.data.description,
-          price: result.data.price,
-          photo: result.data.photo,
-          user: {
-            connect: {
-              id: session.id,
-            },
-          },
-        },
-        select: {
-          id: true,
-        },
-      });
-      redirect(`/products/${product.id}`);
-      //redirect("/products")
-    }
   }
-}
 
+  const session = await getSession();
+  if (!session.id) {
+    return {
+      fieldErrors: {
+        root: ["로그인이 필요합니다."],
+      },
+    };
+  }
+
+  const product = await db.product.create({
+    data: {
+      title: result.data.title,
+      description: result.data.description,
+      price: result.data.price,
+      photo: result.data.photo,
+      user: {
+        connect: {
+          id: session.id,
+        },
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  redirect(`/products/${product.id}`);
+}
