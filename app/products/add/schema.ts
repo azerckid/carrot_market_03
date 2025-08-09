@@ -14,16 +14,19 @@ const commonFields = {
 };
 
 // 클라이언트용 스키마 (FileList) - 브라우저 전용
+// FileList가 존재하는 경우에만 instanceof 체크 (서버 사이드에서 평가 방지)
 export const productSchema = z.object({
-    photo: z
-        .instanceof(FileList)
-        .refine((files) => files.length > 0, "사진을 선택해주세요.")
+    photo: (typeof FileList !== "undefined"
+        ? z.instanceof(FileList)
+        : z.any()
+    )
+        .refine((files) => files && files.length > 0, "사진을 선택해주세요.")
         .refine(
-            (files) => files[0]?.type.startsWith("image/"),
+            (files) => files && files[0]?.type.startsWith("image/"),
             "이미지 파일만 업로드 가능합니다."
         )
         .refine(
-            (files) => files[0]?.size <= 1 * 1024 * 1024,
+            (files) => files && files[0]?.size <= 1 * 1024 * 1024,
             "파일 크기는 최대 1MB까지 가능합니다."
         ),
     ...commonFields,

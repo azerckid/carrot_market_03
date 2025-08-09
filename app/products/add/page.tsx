@@ -106,7 +106,7 @@ export default function AddProduct() {
     return (
         <div>
             <div className="relative">
-                <BackButton href="/products" />
+                <BackButton href="/home" />
             </div>
             <form onSubmit={handleSubmit(onValid)} className="p-5 flex flex-col gap-5">
                 <div className="relative">
