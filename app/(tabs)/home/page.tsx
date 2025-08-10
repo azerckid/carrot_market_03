@@ -26,9 +26,11 @@ export default async function Home() {
   const initialProducts = await getInitialProducts();
   return (
     <div>
+      {/* interceptor 사용예시 */}
+      {/* <Link href="/home/recent">Recent products</Link> */}
       <ProductList initialProducts={initialProducts} />
       <Link
-        href="/products/add"
+        href="/product/add"
         className="bg-orange-500 flex items-center justify-center rounded-full size-16 fixed bottom-24 right-8 text-white transition-colors hover:bg-orange-400"
       >
         <PlusIcon className="size-10" />

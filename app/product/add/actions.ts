@@ -68,3 +68,4 @@ export async function uploadProduct(formData: FormData) {
 
   redirect(`/products/${product.id}`);
 }
+
