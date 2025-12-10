@@ -119,14 +119,24 @@ export default async function ProductDetail({
           {formatToWon(product.price)}원
         </span>
         {isOwner ? (
-          <DeleteProductButton productId={productId} />
+          <div className="flex gap-2">
+            <Link
+              href={`/product/edit/${productId}`}
+              className="bg-blue-500 px-5 py-2.5 rounded-md text-white font-semibold"
+            >
+              수정
+            </Link>
+            <DeleteProductButton productId={productId} />
+          </div>
         ) : null}
-        <Link
-          className="bg-orange-500 px-5 py-2.5 rounded-md text-white font-semibold"
-          href={``}
-        >
-          채팅하기
-        </Link>
+        {!isOwner ? (
+          <Link
+            className="bg-orange-500 px-5 py-2.5 rounded-md text-white font-semibold"
+            href={``}
+          >
+            채팅하기
+          </Link>
+        ) : null}
       </div>
     </div>
   );
