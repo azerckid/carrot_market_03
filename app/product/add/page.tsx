@@ -122,7 +122,7 @@ export default function AddProduct() {
                                 <PhotoIcon className="w-20" />
                                 <div className="text-neutral-400 text-sm">
                                     사진을 추가해주세요.
-                                    {errors.photo?.message}
+                                    {typeof errors.photo?.message === "string" ? errors.photo.message : ""}
                                 </div>
                             </>
                         ) : null}

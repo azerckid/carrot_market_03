@@ -7,6 +7,7 @@ import DeleteProductButton from "@/components/delete-product-button";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { unstable_cache as nextCache, revalidateTag } from "next/cache";
 
 async function getIsOwner(userId: number) {
   const session = await getSession();
@@ -33,13 +34,33 @@ async function getProduct(id: number) {
   return product;
 }
 
+const getCachedProduct = nextCache(getProduct, ["product-detail"], {
+  tags: ["product-detail"],
+});
+
+async function getProductTitle(id: number) {
+  const product = await db.product.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      title: true,
+    },
+  });
+  return product;
+}
+
+const getCachedProductTitle = nextCache(getProductTitle, ["product-title"], {
+  tags: ["product-title"],
+});
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const product = await getProduct(Number(id));
+  const product = await getCachedProductTitle(Number(id));
   return {
     title: product?.title,
   };
@@ -55,7 +76,7 @@ export default async function ProductDetail({
   if (isNaN(productId)) {
     return notFound();
   }
-  const product = await getProduct(productId);
+  const product = await getCachedProduct(productId);
   if (!product) {
     return notFound();
   }
