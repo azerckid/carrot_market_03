@@ -23,6 +23,7 @@ async function getInitialProducts() {
 
 const getCachedProducts = nextCache(getInitialProducts, ["home-products"], {
   tags: ["products"],
+  revalidate: 60,
 });
 
 export type InitialProducts = Awaited<ReturnType<typeof getInitialProducts>>;
