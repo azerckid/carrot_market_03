@@ -3,6 +3,7 @@
 import db from "@/lib/db";
 import getSession from "@/lib/session";
 import { redirect } from "next/navigation";
+import { revalidateTag, revalidatePath } from "next/cache";
 import cloudinary from "@/lib/cloudinary";
 import { serverProductSchema } from "./server-schema";
 
@@ -66,6 +67,9 @@ export async function uploadProduct(formData: FormData) {
     },
   });
 
+  revalidateTag("products", "max");
+  revalidatePath("/home");
+  revalidatePath(`/products/${product.id}`);
   redirect(`/products/${product.id}`);
 }
 
