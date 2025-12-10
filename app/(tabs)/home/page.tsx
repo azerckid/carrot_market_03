@@ -1,6 +1,7 @@
 import ProductList from "@/components/product-list";
 import db from "@/lib/db";
 import { PlusIcon } from "@heroicons/react/24/solid";
+import { unstable_cache as nextCache } from "next/cache";
 import Link from "next/link";
 
 async function getInitialProducts() {
@@ -20,10 +21,18 @@ async function getInitialProducts() {
   return products;
 }
 
+const getCachedProducts = nextCache(getInitialProducts, ["home-products"], {
+  tags: ["products"],
+});
+
 export type InitialProducts = Awaited<ReturnType<typeof getInitialProducts>>;
 
+export const metadata = {
+  title: "Home",
+};
+
 export default async function Home() {
-  const initialProducts = await getInitialProducts();
+  const initialProducts = await getCachedProducts();
   return (
     <div>
       {/* interceptor 사용예시 */}

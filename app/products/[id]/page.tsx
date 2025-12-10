@@ -33,6 +33,18 @@ async function getProduct(id: number) {
   return product;
 }
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const product = await getProduct(Number(id));
+  return {
+    title: product?.title,
+  };
+}
+
 export default async function ProductDetail({
   params,
 }: {
@@ -49,7 +61,7 @@ export default async function ProductDetail({
   }
   const isOwner = await getIsOwner(product.userId);
   return (
-    <div className="pb-40">
+    <div className="pb-0">
       <div className="relative aspect-square">
         <Image
           className="object-cover"
