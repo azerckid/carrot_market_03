@@ -3,7 +3,7 @@
 import db from "@/lib/db";
 import getSession from "@/lib/session";
 import { redirect } from "next/navigation";
-import { revalidateTag } from "next/cache";
+import { revalidateTag, revalidatePath } from "next/cache";
 import cloudinary from "@/lib/cloudinary";
 
 /**
@@ -77,7 +77,8 @@ export async function deleteProduct(productId: number) {
         },
     });
 
-    revalidateTag("products", "max");
+    revalidateTag("products");
+    revalidatePath("/home");
     redirect("/home");
 }
 
