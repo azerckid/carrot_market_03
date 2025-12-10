@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     headers: {
       Accept: "application/json",
     },
+    cache: "no-store",
   });
   if (!accessTokenResponse.ok) {
     return new Response(null, {
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     headers: {
       Authorization: `Bearer ${access_token}`,
     },
-    cache: "no-cache",
+    cache: "no-store",
   });
   if (!userProfileResponse.ok) {
     return new Response(null, {
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
     headers: {
       Authorization: `Bearer ${access_token}`,
     },
-    cache: "no-cache",
+    cache: "no-store",
   });
   if (!emailResponse.ok) {
     return new Response(null, {
