@@ -78,7 +78,10 @@ export async function deleteProduct(productId: number) {
     });
 
     revalidateTag("products", "max");
+    revalidateTag("product-detail", "max");
+    revalidateTag("product-title", "max");
     revalidatePath("/home");
+    revalidatePath(`/products/${productId}`);
     redirect("/home");
 }
 

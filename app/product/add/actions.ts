@@ -68,6 +68,8 @@ export async function uploadProduct(formData: FormData) {
   });
 
   revalidateTag("products", "max");
+  revalidateTag("product-detail", "max");
+  revalidateTag("product-title", "max");
   revalidatePath("/home");
   revalidatePath(`/products/${product.id}`);
   redirect(`/products/${product.id}`);
