@@ -20,7 +20,11 @@ async function test() {
     });
     console.log(token);
 }
-test();
+
+// 개발 환경에서만 테스트 코드 실행
+if (process.env.NODE_ENV === "development") {
+    test();
+}
 
 export default db;
 
