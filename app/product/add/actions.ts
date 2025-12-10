@@ -8,9 +8,18 @@ import cloudinary from "@/lib/cloudinary";
 import { serverProductSchema } from "./server-schema";
 
 export async function uploadProduct(formData: FormData) {
-  const photoFile = formData.get("photo");
+  // 1. 세션 확인 (먼저 확인하여 불필요한 작업 방지)
+  const session = await getSession();
+  if (!session.id) {
+    return {
+      fieldErrors: {
+        root: ["로그인이 필요합니다."],
+      },
+    };
+  }
 
-  // 파일 검증
+  // 2. 파일 검증
+  const photoFile = formData.get("photo");
   if (!(photoFile instanceof File)) {
     return {
       fieldErrors: {
@@ -19,16 +28,27 @@ export async function uploadProduct(formData: FormData) {
     };
   }
 
-  // Cloudinary 업로드
-  const bytes = await photoFile.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-  const base64 = buffer.toString("base64");
-  const dataURI = `data:${photoFile.type};base64,${base64}`;
+  // 3. Cloudinary 업로드 (세션 확인 후 진행)
+  let uploadResult;
+  try {
+    const bytes = await photoFile.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const base64 = buffer.toString("base64");
+    const dataURI = `data:${photoFile.type};base64,${base64}`;
 
-  const uploadResult = await cloudinary.uploader.upload(dataURI, {
-    folder: "carrot-market",
-  });
+    uploadResult = await cloudinary.uploader.upload(dataURI, {
+      folder: "carrot-market",
+    });
+  } catch (error) {
+    console.error("Cloudinary 이미지 업로드 실패:", error);
+    return {
+      fieldErrors: {
+        photo: ["이미지 업로드에 실패했습니다."],
+      },
+    };
+  }
 
+  // 4. 데이터 검증 (Cloudinary 업로드 성공 후)
   const productData = {
     photo: uploadResult.secure_url,
     title: formData.get("title"),
@@ -38,16 +58,13 @@ export async function uploadProduct(formData: FormData) {
 
   const result = serverProductSchema.safeParse(productData);
   if (!result.success) {
+    // 검증 실패 시 업로드된 이미지 삭제 (리소스 정리)
+    try {
+      await cloudinary.uploader.destroy(uploadResult.public_id);
+    } catch (error) {
+      console.error("Cloudinary 이미지 삭제 실패:", error);
+    }
     return result.error.flatten();
-  }
-
-  const session = await getSession();
-  if (!session.id) {
-    return {
-      fieldErrors: {
-        root: ["로그인이 필요합니다."],
-      },
-    };
   }
 
   const product = await db.product.create({
