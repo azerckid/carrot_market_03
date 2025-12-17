@@ -1,10 +1,10 @@
 import db from "@/lib/db";
 import getSession from "@/lib/session";
 import { formatToTimeAgo } from "@/lib/utils";
-import { EyeIcon, HandThumbUpIcon } from "@heroicons/react/24/solid";
-import { revalidatePath } from "next/cache";
+import { EyeIcon } from "@heroicons/react/24/solid";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import LikeButton from "@/components/like-button";
 
 async function getPost(id: number) {
   try {
@@ -66,37 +66,8 @@ export default async function PostDetail({
     return notFound();
   }
 
-  const likePost = async () => {
-    "use server";
-    const session = await getSession();
-    try {
-      await db.like.create({
-        data: {
-          postId: id,
-          userId: session.id!,
-        },
-      });
-      revalidatePath(`/posts/${id}`);
-    } catch (e) {}
-  };
-
-  const dislikePost = async () => {
-    "use server";
-    try {
-      const session = await getSession();
-      await db.like.delete({
-        where: {
-          id: {
-            postId: id,
-            userId: session.id!,
-          },
-        },
-      });
-      revalidatePath(`/posts/${id}`);
-    } catch (e) {}
-  };
-
   const isLiked = await getIsLiked(postId);
+  const likeCount = post._count.likes;
 
   return (
     <div className="p-5 text-white">
@@ -122,14 +93,7 @@ export default async function PostDetail({
           <EyeIcon className="size-5" />
           <span>조회 {post.views}</span>
         </div>
-        <form action={isLiked ? dislikePost : likePost}>
-          <button
-            className={`flex items-center gap-2 text-neutral-400 text-sm border border-neutral-400 rounded-full p-2 hover:bg-neutral-800 transition-colors`}
-          >
-            <HandThumbUpIcon className="size-5" />
-            <span>공감하기 ({post._count.likes})</span>
-          </button>
-        </form>
+        <LikeButton isLiked={isLiked} likeCount={likeCount} postId={postId} />
       </div>
     </div>
   );
