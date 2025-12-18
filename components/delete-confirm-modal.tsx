@@ -7,6 +7,8 @@ interface DeleteConfirmModalProps {
   onClose: () => void;
   onConfirm: () => void;
   isLoading?: boolean;
+  title?: string;
+  message?: string;
 }
 
 export default function DeleteConfirmModal({
@@ -14,6 +16,8 @@ export default function DeleteConfirmModal({
   onClose,
   onConfirm,
   isLoading = false,
+  title = "제품 삭제",
+  message = "정말로 이 제품을 삭제하시겠습니까?",
 }: DeleteConfirmModalProps) {
   if (!isOpen) return null;
 
@@ -36,10 +40,10 @@ export default function DeleteConfirmModal({
 
         {/* 메시지 */}
         <h3 className="text-xl font-semibold text-white text-center mb-2">
-          제품 삭제
+          {title}
         </h3>
         <p className="text-neutral-400 text-center mb-6">
-          정말로 이 제품을 삭제하시겠습니까?
+          {message}
         </p>
 
         {/* 버튼 */}

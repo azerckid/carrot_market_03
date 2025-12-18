@@ -3,6 +3,7 @@
 import db from "@/lib/db";
 import getSession from "@/lib/session";
 import { revalidateTag, revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 export async function likePost(postId: number) {
   await new Promise((r) => setTimeout(r, 10000));
@@ -75,5 +76,43 @@ export async function createComment(postId: number, payload: string) {
     console.error("댓글 작성 오류:", e);
     return { error: "댓글 작성에 실패했습니다." };
   }
+}
+
+export async function deletePost(postId: number) {
+  const session = await getSession();
+
+  // 세션 확인
+  if (!session.id) {
+    return { error: "로그인이 필요합니다." };
+  }
+
+  // 게시글 조회 및 소유자 확인
+  const post = await db.post.findUnique({
+    where: { id: postId },
+    select: {
+      id: true,
+      userId: true,
+    },
+  });
+
+  if (!post) {
+    return { error: "게시글을 찾을 수 없습니다." };
+  }
+
+  // 소유자 확인
+  if (post.userId !== session.id) {
+    return { error: "삭제 권한이 없습니다." };
+  }
+
+  // 게시글 삭제 (CASCADE로 댓글도 자동 삭제됨)
+  await db.post.delete({
+    where: { id: postId },
+  });
+
+  // 캐시 무효화
+  revalidatePath("/life");
+
+  // 리스트 페이지로 리다이렉트
+  redirect("/life");
 }
 

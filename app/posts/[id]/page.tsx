@@ -3,9 +3,11 @@ import getSession from "@/lib/session";
 import { formatToTimeAgo } from "@/lib/utils";
 import { EyeIcon, UserIcon } from "@heroicons/react/24/solid";
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import LikeButton from "@/components/like-button";
 import CommentSection from "@/components/comment-section";
+import DeletePostButton from "@/components/delete-post-button";
 
 async function getPost(id: number) {
   try {
@@ -21,6 +23,7 @@ async function getPost(id: number) {
       include: {
         user: {
           select: {
+            id: true,
             username: true,
             avatar: true,
           },
@@ -73,6 +76,7 @@ async function getCurrentUser() {
   const user = await db.user.findUnique({
     where: { id: session.id },
     select: {
+      id: true,
       username: true,
       avatar: true,
     },
@@ -98,6 +102,7 @@ export default async function PostDetail({
   const isLiked = await getIsLiked(postId);
   const likeCount = post._count.likes;
   const currentUser = await getCurrentUser();
+  const isOwner = currentUser?.id === post.user.id;
 
   return (
     <div className="p-5 text-white">
@@ -122,6 +127,20 @@ export default async function PostDetail({
           </div>
         </div>
       </div>
+
+      {/* 소유자만 수정/삭제 버튼 표시 */}
+      {isOwner && (
+        <div className="flex gap-2 mb-4">
+          <Link
+            href={`/posts/edit/${postId}`}
+            className="bg-orange-500 hover:bg-orange-600 px-5 py-2.5 rounded-md text-white font-semibold transition-colors"
+          >
+            수정
+          </Link>
+          <DeletePostButton postId={postId} />
+        </div>
+      )}
+
       <h2 className="text-lg font-semibold">{post.title}</h2>
       <p className="mb-5">{post.description}</p>
       <div className="flex flex-col gap-5 items-start">
