@@ -14,8 +14,8 @@ export async function likePost(postId: number) {
         userId: session.id!,
       },
     });
-    revalidateTag(`like-status-${postId}`);
-  } catch (e) {}
+    revalidateTag(`like-status-${postId}`, "max");
+  } catch (e) { }
 }
 
 export async function dislikePost(postId: number) {
@@ -24,13 +24,13 @@ export async function dislikePost(postId: number) {
     const session = await getSession();
     await db.like.delete({
       where: {
-        id: {
-          postId,
+        userId_postId: {
           userId: session.id!,
+          postId,
         },
       },
     });
-    revalidateTag(`like-status-${postId}`);
-  } catch (e) {}
+    revalidateTag(`like-status-${postId}`, "max");
+  } catch (e) { }
 }
 
