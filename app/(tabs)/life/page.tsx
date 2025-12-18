@@ -3,6 +3,7 @@ import { formatToTimeAgo } from "@/lib/utils";
 import {
   ChatBubbleBottomCenterIcon,
   HandThumbUpIcon,
+  PlusIcon,
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
 
@@ -33,6 +34,15 @@ export default async function Life() {
   const posts = await getPosts();
   return (
     <div className="p-5 flex flex-col">
+      <div className="flex justify-end mb-5">
+        <Link
+          href="/posts/add"
+          className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full transition-colors"
+        >
+          <PlusIcon className="size-5" />
+          <span>글쓰기</span>
+        </Link>
+      </div>
       {posts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
           <p className="text-lg">아직 게시글이 없습니다.</p>
