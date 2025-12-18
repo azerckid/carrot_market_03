@@ -137,7 +137,7 @@ export default async function PostDetail({
           >
             수정
           </Link>
-          <DeletePostButton postId={postId} />
+          <DeletePostButton postId={postId} commentCount={post._count.comments} />
         </div>
       )}
 

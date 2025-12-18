@@ -42,9 +42,13 @@ export default function DeleteConfirmModal({
         <h3 className="text-xl font-semibold text-white text-center mb-2">
           {title}
         </h3>
-        <p className="text-neutral-400 text-center mb-6">
-          {message}
-        </p>
+        <div className="text-neutral-400 text-center mb-6">
+          {message.split("\n").map((line, index) => (
+            <p key={index} className={index === 1 ? "text-orange-500 font-semibold mt-2" : ""}>
+              {line}
+            </p>
+          ))}
+        </div>
 
         {/* 버튼 */}
         <div className="flex gap-3">

@@ -6,10 +6,12 @@ import DeleteConfirmModal from "./delete-confirm-modal";
 
 interface DeletePostButtonProps {
   postId: number;
+  commentCount: number;
 }
 
 export default function DeletePostButton({
   postId,
+  commentCount,
 }: DeletePostButtonProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -46,7 +48,11 @@ export default function DeletePostButton({
         onConfirm={handleConfirm}
         isLoading={isPending}
         title="게시글 삭제"
-        message="정말로 이 게시글을 삭제하시겠습니까?"
+        message={
+          commentCount > 0
+            ? `정말로 이 게시글을 삭제하시겠습니까?\n이 게시글과 함께 ${commentCount}개의 댓글이 삭제됩니다.`
+            : "정말로 이 게시글을 삭제하시겠습니까?"
+        }
       />
     </>
   );
