@@ -42,9 +42,9 @@ async function getIsLiked(postId: number) {
   const session = await getSession();
   const like = await db.like.findUnique({
     where: {
-      id: {
-        postId,
+      userId_postId: {
         userId: session.id!,
+        postId,
       },
     },
   });
