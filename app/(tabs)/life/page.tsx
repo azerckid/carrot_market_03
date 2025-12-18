@@ -53,7 +53,7 @@ export default async function Life() {
           <Link
             key={post.id}
             href={`/posts/${post.id}`}
-            className="pb-5 mb-5 border-b border-neutral-500 text-neutral-400 flex flex-col gap-2 last:pb-0 last:border-b-0"
+            className="pb-5 mb-5 border-b border-neutral-500 text-neutral-400 flex flex-col gap-2 last:pb-0 last:border-b-0 cursor-pointer hover:bg-neutral-800/50 rounded-lg p-3 -mx-3 transition-colors"
           >
             <h2 className="text-white text-lg font-semibold">{post.title}</h2>
             <p>{post.description}</p>
