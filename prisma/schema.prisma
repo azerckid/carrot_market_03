@@ -14,23 +14,26 @@ datasource db {
 }
 
 model User {
-  id              Int        @id @default(autoincrement())
-  username        String     @unique
-  email           String?    @unique
-  password        String?
-  phone           String?    @unique
-  github_id       String?    @unique
-  avatar          String?
-  created_at      DateTime   @default(now())
-  updated_at      DateTime   @updatedAt
-  tokens          SMSToken[]
-  products        Product[]
-  posts           Post[]
-  Comment         Comment[]
-  Like            Like[]
-  buyerChatRooms  ChatRoom[] @relation("BuyerChatRooms")
-  sellerChatRooms ChatRoom[] @relation("SellerChatRooms")
-  messages        Message[]
+  id                Int        @id @default(autoincrement())
+  username          String     @unique
+  email             String?    @unique
+  password          String?
+  phone             String?    @unique
+  github_id         String?    @unique
+  avatar            String?
+  created_at        DateTime   @default(now())
+  updated_at        DateTime   @updatedAt
+  tokens            SMSToken[]
+  products          Product[]
+  posts             Post[]
+  Comment           Comment[]
+  Like              Like[]
+  buyerChatRooms    ChatRoom[] @relation("BuyerChatRooms")
+  sellerChatRooms   ChatRoom[] @relation("SellerChatRooms")
+  messages          Message[]
+  purchasedProducts Product[]  @relation("PurchasedProducts")
+  reviewerReviews   Review[]   @relation("ReviewerReviews")
+  revieweeReviews   Review[]   @relation("RevieweeReviews")
 }
 
 model SMSToken {
@@ -48,11 +51,16 @@ model Product {
   price       Float
   photo       String
   description String
+  status      String     @default("판매중")
+  soldTo      Int?
+  soldAt      DateTime?
   created_at  DateTime   @default(now())
   updated_at  DateTime   @updatedAt
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      Int
+  soldToUser  User?      @relation("PurchasedProducts", fields: [soldTo], references: [id], onDelete: SetNull)
   chatRooms   ChatRoom[]
+  reviews     Review[]
 }
 
 model Post {
@@ -119,4 +127,22 @@ model Message {
   chatRoomId Int
 
   @@index([chatRoomId, created_at]) // 채팅방별 메시지 조회 최적화
+}
+
+model Review {
+  id         Int       @id @default(autoincrement())
+  rating     Int
+  content    String?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  reviewer   User      @relation("ReviewerReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewerId Int
+  reviewee   User      @relation("RevieweeReviews", fields: [revieweeId], references: [id], onDelete: Cascade)
+  revieweeId Int
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId  Int
+
+  @@unique([reviewerId, productId]) // 한 상품당 한 번만 리뷰 가능
+  @@index([revieweeId]) // 리뷰 대상자로 검색 최적화
+  @@index([productId]) // 상품별 리뷰 조회 최적화
 }
