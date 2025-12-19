@@ -12,6 +12,7 @@ import {
   ArrowRightOnRectangleIcon,
   HandThumbUpIcon,
 } from "@heroicons/react/24/outline";
+import SoldProductsSection from "@/components/sold-products-section";
 
 async function getUser() {
   const session = await getSession();
@@ -68,7 +69,7 @@ async function getUserPosts(userId: number) {
   return posts;
 }
 
-async function getUserProducts(userId: number) {
+async function getSoldProducts(userId: number) {
   const products = await db.product.findMany({
     where: {
       userId,
@@ -78,9 +79,12 @@ async function getUserProducts(userId: number) {
       title: true,
       price: true,
       photo: true,
+      status: true,
       created_at: true,
+      _count: {
+        select: { chatRooms: true },
+      },
     },
-    take: 6,
     orderBy: {
       created_at: "desc",
     },
@@ -91,7 +95,7 @@ async function getUserProducts(userId: number) {
 export default async function Profile() {
   const user = await getUser();
   const posts = await getUserPosts(user.id);
-  const products = await getUserProducts(user.id);
+  const products = await getSoldProducts(user.id);
   
   const logOut = async () => {
     "use server";
@@ -202,50 +206,8 @@ export default async function Profile() {
         )}
       </div>
 
-      {/* 내 상품 섹션 */}
-      <div className="mb-8 border-t border-neutral-700 pt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">내 상품</h2>
-          {products.length > 0 && (
-            <Link
-              href="/home"
-              className="text-sm text-neutral-400 hover:text-orange-500 transition-colors"
-            >
-              전체보기 →
-            </Link>
-          )}
-        </div>
-        {products.length === 0 ? (
-          <div className="text-center py-10 text-neutral-400">
-            <p className="text-sm">등록한 상품이 없습니다.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-4">
-            {products.map((product) => (
-              <Link
-                key={product.id}
-                href={`/products/${product.id}`}
-                className="flex flex-col gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-              >
-                <div className="relative aspect-square rounded-lg overflow-hidden bg-neutral-700">
-                  <Image
-                    fill
-                    src={product.photo}
-                    alt={product.title}
-                    className="object-cover"
-                  />
-                </div>
-                <h3 className="text-sm font-semibold line-clamp-1">
-                  {product.title}
-                </h3>
-                <p className="text-base font-bold text-orange-500">
-                  {formatToWon(product.price)}원
-                </p>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* 판매한 상품 섹션 */}
+      <SoldProductsSection products={products} />
 
       {/* 설정 섹션 */}
       <div className="border-t border-neutral-700 pt-6">
