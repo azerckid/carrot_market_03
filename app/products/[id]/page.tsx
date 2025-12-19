@@ -9,6 +9,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { unstable_cache as nextCache, revalidateTag } from "next/cache";
 import { createChatRoom } from "./actions";
+import MarkAsSoldButton from "@/components/mark-as-sold-button";
 
 async function getIsOwner(userId: number) {
   const session = await getSession();
@@ -23,7 +24,14 @@ async function getProduct(id: number) {
     where: {
       id,
     },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      price: true,
+      photo: true,
+      description: true,
+      status: true,
+      userId: true,
       user: {
         select: {
           username: true,
@@ -33,6 +41,32 @@ async function getProduct(id: number) {
     },
   });
   return product;
+}
+
+async function getBuyersForProduct(productId: number, sellerId: number) {
+  const chatRooms = await db.chatRoom.findMany({
+    where: {
+      productId,
+      sellerId,
+    },
+    select: {
+      id: true,
+      buyer: {
+        select: {
+          id: true,
+          username: true,
+          avatar: true,
+        },
+      },
+    },
+  });
+
+  return chatRooms.map((chatRoom) => ({
+    id: chatRoom.buyer.id,
+    username: chatRoom.buyer.username,
+    avatar: chatRoom.buyer.avatar,
+    chatRoomId: chatRoom.id,
+  }));
 }
 
 const getCachedProduct = nextCache(getProduct, ["product-detail"], {
@@ -82,6 +116,10 @@ export default async function ProductDetail({
     return notFound();
   }
   const isOwner = await getIsOwner(product.userId);
+  const buyers =
+    isOwner && product.status === "판매중"
+      ? await getBuyersForProduct(productId, product.userId)
+      : [];
   return (
     <div className="pb-0">
       <div className="relative aspect-square">
@@ -121,6 +159,9 @@ export default async function ProductDetail({
         </span>
         {isOwner ? (
           <div className="flex gap-2">
+            {product.status === "판매중" && buyers.length > 0 ? (
+              <MarkAsSoldButton productId={productId} buyers={buyers} />
+            ) : null}
             <Link
               href={`/product/edit/${productId}`}
               className="bg-blue-500 px-5 py-2.5 rounded-md text-white font-semibold"

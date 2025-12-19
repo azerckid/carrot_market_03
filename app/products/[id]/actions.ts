@@ -105,3 +105,64 @@ export async function createChatRoom(productId: number) {
   revalidatePath("/chat");
   redirect(`/chat/${chatRoom.id}`);
 }
+
+export async function markAsSold(productId: number, buyerId: number) {
+  const session = await getSession();
+
+  if (!session.id) {
+    return { error: "로그인이 필요합니다." };
+  }
+
+  const product = await db.product.findUnique({
+    where: { id: productId },
+    select: {
+      id: true,
+      userId: true,
+      status: true,
+    },
+  });
+
+  if (!product) {
+    return { error: "상품을 찾을 수 없습니다." };
+  }
+
+  if (product.userId !== session.id) {
+    return { error: "판매자만 판매 완료 처리할 수 있습니다." };
+  }
+
+  if (product.status === "판매완료") {
+    return { error: "이미 판매 완료된 상품입니다." };
+  }
+
+  // 구매자가 실제로 이 상품과 채팅방이 있는지 확인
+  const chatRoom = await db.chatRoom.findFirst({
+    where: {
+      productId,
+      buyerId,
+      sellerId: session.id,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!chatRoom) {
+    return { error: "해당 구매자와의 채팅방을 찾을 수 없습니다." };
+  }
+
+  await db.product.update({
+    where: { id: productId },
+    data: {
+      status: "판매완료",
+      soldTo: buyerId,
+      soldAt: new Date(),
+    },
+  });
+
+  revalidateTag("product-detail");
+  revalidateTag("product-title");
+  revalidatePath(`/products/${productId}`);
+  revalidatePath("/profile");
+
+  return { success: true };
+}
