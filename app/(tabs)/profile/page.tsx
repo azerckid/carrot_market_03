@@ -13,6 +13,7 @@ import {
   HandThumbUpIcon,
 } from "@heroicons/react/24/outline";
 import SoldProductsSection from "@/components/sold-products-section";
+import PurchasedProductsSection from "@/components/purchased-products-section";
 
 async function getUser() {
   const session = await getSession();
@@ -92,10 +93,37 @@ async function getSoldProducts(userId: number) {
   return products;
 }
 
+async function getPurchasedProducts(userId: number) {
+  const products = await db.product.findMany({
+    where: {
+      soldTo: userId,
+    },
+    select: {
+      id: true,
+      title: true,
+      price: true,
+      photo: true,
+      soldAt: true,
+      user: {
+        select: {
+          id: true,
+          username: true,
+          avatar: true,
+        },
+      },
+    },
+    orderBy: {
+      soldAt: "desc",
+    },
+  });
+  return products;
+}
+
 export default async function Profile() {
   const user = await getUser();
   const posts = await getUserPosts(user.id);
-  const products = await getSoldProducts(user.id);
+  const soldProducts = await getSoldProducts(user.id);
+  const purchasedProducts = await getPurchasedProducts(user.id);
   
   const logOut = async () => {
     "use server";
@@ -207,7 +235,10 @@ export default async function Profile() {
       </div>
 
       {/* 판매한 상품 섹션 */}
-      <SoldProductsSection products={products} />
+      <SoldProductsSection products={soldProducts} />
+
+      {/* 구매한 상품 섹션 */}
+      <PurchasedProductsSection products={purchasedProducts} />
 
       {/* 설정 섹션 */}
       <div className="border-t border-neutral-700 pt-6">
