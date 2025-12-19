@@ -8,6 +8,7 @@ import { notFound } from "next/navigation";
 import LikeButton from "@/components/like-button";
 import CommentSection from "@/components/comment-section";
 import DeletePostButton from "@/components/delete-post-button";
+import BackButton from "@/components/back-button";
 
 async function getPost(id: number) {
   try {
@@ -106,24 +107,27 @@ export default async function PostDetail({
 
   return (
     <div className="p-5 text-white">
-      <div className="flex items-center gap-2 mb-2">
-        {post.user.avatar ? (
-          <Image
-            width={28}
-            height={28}
-            className="size-7 rounded-full"
-            src={post.user.avatar}
-            alt={post.user.username}
-          />
-        ) : (
-          <div className="size-7 rounded-full bg-neutral-700 flex items-center justify-center">
-            <UserIcon className="size-5 text-neutral-400" />
-          </div>
-        )}
-        <div>
-          <span className="text-sm font-semibold">{post.user.username}</span>
-          <div className="text-xs">
-            <span>{formatToTimeAgo(post.created_at.toString())}</span>
+      <div className="relative pt-16">
+        <BackButton href="/life" />
+        <div className="flex items-center gap-2 mb-2">
+          {post.user.avatar ? (
+            <Image
+              width={28}
+              height={28}
+              className="size-7 rounded-full"
+              src={post.user.avatar}
+              alt={post.user.username}
+            />
+          ) : (
+            <div className="size-7 rounded-full bg-neutral-700 flex items-center justify-center">
+              <UserIcon className="size-5 text-neutral-400" />
+            </div>
+          )}
+          <div>
+            <span className="text-sm font-semibold">{post.user.username}</span>
+            <div className="text-xs">
+              <span>{formatToTimeAgo(post.created_at.toString())}</span>
+            </div>
           </div>
         </div>
       </div>
