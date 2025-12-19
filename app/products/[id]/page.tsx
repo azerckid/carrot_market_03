@@ -8,6 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { unstable_cache as nextCache, revalidateTag } from "next/cache";
+import { createChatRoom } from "./actions";
 
 async function getIsOwner(userId: number) {
   const session = await getSession();
@@ -128,13 +129,16 @@ export default async function ProductDetail({
             </Link>
             <DeleteProductButton productId={productId} />
           </div>
-        ) : null}
-        <Link
-          className="bg-orange-500 px-5 py-2.5 rounded-md text-white font-semibold"
-          href={``}
-        >
-          채팅하기
-        </Link>
+        ) : (
+          <form action={createChatRoom.bind(null, productId)}>
+            <button
+              type="submit"
+              className="bg-orange-500 px-5 py-2.5 rounded-md text-white font-semibold hover:bg-orange-600 transition-colors"
+            >
+              채팅하기
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

@@ -14,20 +14,23 @@ datasource db {
 }
 
 model User {
-  id         Int        @id @default(autoincrement())
-  username   String     @unique
-  email      String?    @unique
-  password   String?
-  phone      String?    @unique
-  github_id  String?    @unique
-  avatar     String?
-  created_at DateTime   @default(now())
-  updated_at DateTime   @updatedAt
-  tokens     SMSToken[]
-  products   Product[]
-  posts      Post[]
-  Comment    Comment[]
-  Like       Like[]
+  id              Int        @id @default(autoincrement())
+  username        String     @unique
+  email           String?    @unique
+  password        String?
+  phone           String?    @unique
+  github_id       String?    @unique
+  avatar          String?
+  created_at      DateTime   @default(now())
+  updated_at      DateTime   @updatedAt
+  tokens          SMSToken[]
+  products        Product[]
+  posts           Post[]
+  Comment         Comment[]
+  Like            Like[]
+  buyerChatRooms  ChatRoom[] @relation("BuyerChatRooms")
+  sellerChatRooms ChatRoom[] @relation("SellerChatRooms")
+  messages        Message[]
 }
 
 model SMSToken {
@@ -40,15 +43,16 @@ model SMSToken {
 }
 
 model Product {
-  id          Int      @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   title       String
   price       Float
   photo       String
   description String
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      Int
+  chatRooms   ChatRoom[]
 }
 
 model Post {
@@ -84,4 +88,35 @@ model Like {
   postId     Int
 
   @@id([userId, postId])
+}
+
+model ChatRoom {
+  id         Int       @id @default(autoincrement())
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId  Int
+  buyer      User      @relation("BuyerChatRooms", fields: [buyerId], references: [id], onDelete: Cascade)
+  buyerId    Int
+  seller     User      @relation("SellerChatRooms", fields: [sellerId], references: [id], onDelete: Cascade)
+  sellerId   Int
+  messages   Message[]
+
+  @@unique([buyerId, sellerId, productId]) // 같은 구매자-판매자-상품 조합에 대한 중복 방지
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([productId])
+}
+
+model Message {
+  id         Int      @id @default(autoincrement())
+  payload    String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     Int
+  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  chatRoomId Int
+
+  @@index([chatRoomId, created_at]) // 채팅방별 메시지 조회 최적화
 }
