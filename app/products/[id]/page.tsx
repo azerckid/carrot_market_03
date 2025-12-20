@@ -32,6 +32,7 @@ async function getProduct(id: number) {
       description: true,
       status: true,
       userId: true,
+      soldTo: true,
       user: {
         select: {
           username: true,
@@ -41,6 +42,41 @@ async function getProduct(id: number) {
     },
   });
   return product;
+}
+
+async function canWriteReview(productId: number, userId: number) {
+  const product = await db.product.findUnique({
+    where: { id: productId },
+    select: {
+      status: true,
+      userId: true,
+      soldTo: true,
+    },
+  });
+
+  if (!product || product.status !== "판매완료") {
+    return false;
+  }
+
+  // 판매자 또는 구매자인지 확인
+  const isSeller = product.userId === userId;
+  const isBuyer = product.soldTo === userId;
+
+  if (!isSeller && !isBuyer) {
+    return false;
+  }
+
+  // 이미 리뷰를 작성했는지 확인
+  const existingReview = await db.review.findUnique({
+    where: {
+      reviewerId_productId: {
+        reviewerId: userId,
+        productId,
+      },
+    },
+  });
+
+  return !existingReview;
 }
 
 async function getBuyersForProduct(productId: number, sellerId: number) {
@@ -115,11 +151,16 @@ export default async function ProductDetail({
   if (!product) {
     return notFound();
   }
+  const session = await getSession();
   const isOwner = await getIsOwner(product.userId);
   const buyers =
     isOwner && product.status === "판매중"
       ? await getBuyersForProduct(productId, product.userId)
       : [];
+  const canReview =
+    session.id && product.status === "판매완료"
+      ? await canWriteReview(productId, session.id)
+      : false;
   return (
     <div className="pb-0">
       <div className="relative aspect-square">
@@ -162,6 +203,14 @@ export default async function ProductDetail({
             {product.status === "판매중" && buyers.length > 0 ? (
               <MarkAsSoldButton productId={productId} buyers={buyers} />
             ) : null}
+            {canReview ? (
+              <Link
+                href={`/reviews/create/${productId}`}
+                className="bg-purple-500 px-5 py-2.5 rounded-md text-white font-semibold hover:bg-purple-600 transition-colors"
+              >
+                리뷰 작성
+              </Link>
+            ) : null}
             <Link
               href={`/product/edit/${productId}`}
               className="bg-blue-500 px-5 py-2.5 rounded-md text-white font-semibold"
@@ -171,14 +220,26 @@ export default async function ProductDetail({
             <DeleteProductButton productId={productId} />
           </div>
         ) : (
-          <form action={createChatRoom.bind(null, productId)}>
-            <button
-              type="submit"
-              className="bg-orange-500 px-5 py-2.5 rounded-md text-white font-semibold hover:bg-orange-600 transition-colors"
-            >
-              채팅하기
-            </button>
-          </form>
+          <div className="flex gap-2">
+            {canReview ? (
+              <Link
+                href={`/reviews/create/${productId}`}
+                className="bg-purple-500 px-5 py-2.5 rounded-md text-white font-semibold hover:bg-purple-600 transition-colors"
+              >
+                리뷰 작성
+              </Link>
+            ) : null}
+            {product.status === "판매중" ? (
+              <form action={createChatRoom.bind(null, productId)}>
+                <button
+                  type="submit"
+                  className="bg-orange-500 px-5 py-2.5 rounded-md text-white font-semibold hover:bg-orange-600 transition-colors"
+                >
+                  채팅하기
+                </button>
+              </form>
+            ) : null}
+          </div>
         )}
       </div>
     </div>
