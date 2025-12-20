@@ -12,6 +12,7 @@ import {
   ArrowRightOnRectangleIcon,
   HandThumbUpIcon,
 } from "@heroicons/react/24/outline";
+import { StarIcon } from "@heroicons/react/24/solid";
 import SoldProductsSection from "@/components/sold-products-section";
 import PurchasedProductsSection from "@/components/purchased-products-section";
 
@@ -119,11 +120,43 @@ async function getPurchasedProducts(userId: number) {
   return products;
 }
 
+async function getReceivedReviews(userId: number) {
+  const reviews = await db.review.findMany({
+    where: { revieweeId: userId },
+    include: {
+      reviewer: {
+        select: {
+          id: true,
+          username: true,
+          avatar: true,
+        },
+      },
+      product: {
+        select: {
+          id: true,
+          title: true,
+          photo: true,
+        },
+      },
+    },
+    orderBy: { created_at: "desc" },
+  });
+
+  // 평균 별점 계산
+  const avgRating =
+    reviews.length > 0
+      ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+      : 0;
+
+  return { reviews, avgRating };
+}
+
 export default async function Profile() {
   const user = await getUser();
   const posts = await getUserPosts(user.id);
   const soldProducts = await getSoldProducts(user.id);
   const purchasedProducts = await getPurchasedProducts(user.id);
+  const { reviews, avgRating } = await getReceivedReviews(user.id);
   
   const logOut = async () => {
     "use server";
@@ -239,6 +272,105 @@ export default async function Profile() {
 
       {/* 구매한 상품 섹션 */}
       <PurchasedProductsSection products={purchasedProducts} />
+
+      {/* 받은 리뷰 섹션 */}
+      <div className="mb-8 border-t border-neutral-700 pt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">받은 리뷰</h2>
+          {reviews.length > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <StarIcon className="size-5 text-yellow-400" />
+                <span className="text-base font-bold">
+                  {avgRating.toFixed(1)}
+                </span>
+              </div>
+              <span className="text-sm text-neutral-400">
+                ({reviews.length})
+              </span>
+            </div>
+          )}
+        </div>
+        {reviews.length === 0 ? (
+          <div className="text-center py-10 text-neutral-400">
+            <p className="text-sm">받은 리뷰가 없습니다.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {reviews.map((review) => (
+              <div
+                key={review.id}
+                className="bg-neutral-800 rounded-lg p-4 flex flex-col gap-3"
+              >
+                {/* 리뷰 작성자 및 별점 */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="size-10 overflow-hidden rounded-full bg-neutral-700 flex items-center justify-center flex-shrink-0">
+                      {review.reviewer.avatar ? (
+                        <Image
+                          src={review.reviewer.avatar}
+                          width={40}
+                          height={40}
+                          alt={review.reviewer.username}
+                          className="rounded-full"
+                        />
+                      ) : (
+                        <UserIcon className="size-6 text-neutral-400" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-semibold">{review.reviewer.username}</p>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <StarIcon
+                            key={star}
+                            className={`size-4 ${
+                              star <= review.rating
+                                ? "text-yellow-400"
+                                : "text-neutral-600"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-xs text-neutral-500">
+                    {formatToTimeAgo(review.created_at.toString())}
+                  </span>
+                </div>
+
+                {/* 리뷰 내용 */}
+                {review.content && (
+                  <p className="text-sm text-neutral-300 whitespace-pre-wrap">
+                    {review.content}
+                  </p>
+                )}
+
+                {/* 상품 정보 링크 */}
+                <Link
+                  href={`/products/${review.product.id}`}
+                  className="flex items-center gap-3 p-2 bg-neutral-700/50 rounded-lg hover:bg-neutral-700 transition-colors"
+                >
+                  <div className="relative size-12 rounded-lg overflow-hidden bg-neutral-600 flex-shrink-0">
+                    <Image
+                      fill
+                      src={review.product.photo}
+                      alt={review.product.title}
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold line-clamp-1">
+                      {review.product.title}
+                    </p>
+                    <p className="text-xs text-neutral-400">상품 보기 →</p>
+                  </div>
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* 설정 섹션 */}
       <div className="border-t border-neutral-700 pt-6">
