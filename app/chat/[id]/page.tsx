@@ -118,22 +118,30 @@ export default async function ChatRoomDetail({
         <BackButton href="/chat" />
         <div className="flex items-center gap-3 mb-4">
           {/* 상대방 아바타 */}
-          {otherUser.avatar ? (
-            <Image
-              width={40}
-              height={40}
-              className="size-10 rounded-full"
-              src={otherUser.avatar}
-              alt={otherUser.username}
-            />
-          ) : (
-            <div className="size-10 rounded-full bg-neutral-700 flex items-center justify-center">
-              <UserIcon className="size-6 text-neutral-400" />
-            </div>
-          )}
-          <div className="flex-1">
+          <Link
+            href={`/users/${otherUser.id}`}
+            className="size-10 rounded-full overflow-hidden flex items-center justify-center"
+          >
+            {otherUser.avatar ? (
+              <Image
+                width={40}
+                height={40}
+                className="size-10 rounded-full"
+                src={otherUser.avatar}
+                alt={otherUser.username}
+              />
+            ) : (
+              <div className="size-10 rounded-full bg-neutral-700 flex items-center justify-center">
+                <UserIcon className="size-6 text-neutral-400" />
+              </div>
+            )}
+          </Link>
+          <Link
+            href={`/users/${otherUser.id}`}
+            className="flex-1 hover:text-orange-500 transition-colors"
+          >
             <h2 className="text-lg font-semibold text-white">{otherUser.username}</h2>
-          </div>
+          </Link>
         </div>
         
         {/* 상품 정보 */}

@@ -202,7 +202,10 @@ export default async function ProductDetail({
         </div>
       </div>
       <div className="p-5 flex items-center gap-3 border-b border-neutral-700">
-        <div className="size-10 overflow-hidden rounded-full">
+        <Link
+          href={`/users/${product.userId}`}
+          className="size-10 overflow-hidden rounded-full flex items-center justify-center"
+        >
           {product.user.avatar !== null ? (
             <Image
               src={product.user.avatar}
@@ -214,10 +217,13 @@ export default async function ProductDetail({
           ) : (
             <UserIcon className="size-10" />
           )}
-        </div>
-        <div>
+        </Link>
+        <Link
+          href={`/users/${product.userId}`}
+          className="hover:text-orange-500 transition-colors"
+        >
           <h3>{product.user.username}</h3>
-        </div>
+        </Link>
       </div>
       <div className="p-5 pb-32">
         <h1 className="text-2xl font-semibold mb-2">{product.title}</h1>
