@@ -161,6 +161,31 @@ export default async function ProductDetail({
     session.id && product.status === "판매완료"
       ? await canWriteReview(productId, session.id)
       : false;
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "판매중":
+        return (
+          <span className="text-sm px-3 py-1.5 bg-orange-500/20 text-orange-500 rounded-full font-semibold backdrop-blur-sm">
+            판매중
+          </span>
+        );
+      case "판매완료":
+        return (
+          <span className="text-sm px-3 py-1.5 bg-neutral-500/20 text-neutral-300 rounded-full font-semibold backdrop-blur-sm">
+            판매완료
+          </span>
+        );
+      case "예약중":
+        return (
+          <span className="text-sm px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-full font-semibold backdrop-blur-sm">
+            예약중
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="pb-0">
       <div className="relative aspect-square">
@@ -171,6 +196,10 @@ export default async function ProductDetail({
           alt={product.title}
         />
         <BackButton href="/home" />
+        {/* 판매 상태 배지 */}
+        <div className="absolute top-4 left-4">
+          {getStatusBadge(product.status)}
+        </div>
       </div>
       <div className="p-5 flex items-center gap-3 border-b border-neutral-700">
         <div className="size-10 overflow-hidden rounded-full">
