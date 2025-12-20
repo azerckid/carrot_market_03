@@ -197,7 +197,7 @@ export default async function ProductDetail({
         />
         <BackButton href="/home" />
         {/* 판매 상태 배지 */}
-        <div className="absolute top-4 left-4">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2">
           {getStatusBadge(product.status)}
         </div>
       </div>
