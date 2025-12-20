@@ -497,15 +497,23 @@ export default async function Profile() {
       {/* 설정 섹션 */}
       <div className="border-t border-neutral-700 pt-6">
         <h2 className="text-lg font-semibold mb-4">설정</h2>
-        <form action={logOut}>
-          <button
-            type="submit"
-            className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+        <div className="flex flex-col gap-3">
+          <Link
+            href="/profile/edit"
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
-            <ArrowRightOnRectangleIcon className="size-5" />
-            <span>로그아웃</span>
-          </button>
-        </form>
+            <span>프로필 수정</span>
+          </Link>
+          <form action={logOut}>
+            <button
+              type="submit"
+              className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <ArrowRightOnRectangleIcon className="size-5" />
+              <span>로그아웃</span>
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
