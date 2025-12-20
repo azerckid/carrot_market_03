@@ -34,10 +34,8 @@ export default function MarkAsSoldButton({
       const result = await markAsSold(productId, selectedBuyerId);
       if (result?.error) {
         setError(result.error);
-      } else {
-        // 성공 시 페이지 리로드 (revalidatePath가 처리)
-        window.location.reload();
       }
+      // 성공 시 redirect가 처리되므로 여기서는 아무것도 하지 않음
     });
   };
 

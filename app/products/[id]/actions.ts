@@ -164,5 +164,6 @@ export async function markAsSold(productId: number, buyerId: number) {
   revalidatePath(`/products/${productId}`);
   revalidatePath("/profile");
 
-  return { success: true };
+  // 리뷰 작성 페이지로 리다이렉트
+  redirect(`/reviews/create/${productId}`);
 }
