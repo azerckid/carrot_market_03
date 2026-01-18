@@ -1,6 +1,5 @@
 import { formatToTimeAgo, formatToWon } from "@/lib/utils";
 import Image from "next/image";
-import Link from "next/link";
 
 interface ListProductProps {
   title: string;
@@ -18,7 +17,7 @@ export default function ListProduct({
   id,
 }: ListProductProps) {
   return (
-    <Link href={`/products/${id}`} className="flex gap-5">
+    <a href={`/products/${id}`} className="flex gap-5">
       <div className="relative size-28 rounded-md overflow-hidden bg-neutral-700">
         <Image
           fill
@@ -34,7 +33,7 @@ export default function ListProduct({
         </span>
         <span className="text-lg font-semibold">{formatToWon(price)}원</span>
       </div>
-    </Link>
+    </a>
   );
 }
 

@@ -134,6 +134,11 @@ export default async function Chat() {
             const otherUser = chatRoom.buyerId === session.id ? chatRoom.seller : chatRoom.buyer;
             const lastMessage = chatRoom.messages[0];
             
+            // otherUser가 없을 경우를 대비한 안전장치
+            if (!otherUser) {
+              return null;
+            }
+            
             return (
               <Link
                 key={chatRoom.id}

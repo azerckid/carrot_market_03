@@ -9,7 +9,7 @@ import DeleteProductButton from "@/components/delete-product-button";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { unstable_cache as nextCache, revalidateTag } from "next/cache";
+import { revalidateTag } from "next/cache";
 import { createChatRoom } from "./actions";
 import MarkAsSoldButton from "@/components/mark-as-sold-button";
 
@@ -109,10 +109,6 @@ async function getBuyersForProduct(productId: number, sellerId: number) {
   }));
 }
 
-const getCachedProduct = nextCache(getProduct, ["product-detail"], {
-  tags: ["product-detail"],
-});
-
 async function getProductTitle(id: number) {
   const product = await db.query.products.findFirst({
     where: eq(products.id, id),
@@ -123,17 +119,13 @@ async function getProductTitle(id: number) {
   return product;
 }
 
-const getCachedProductTitle = nextCache(getProductTitle, ["product-title"], {
-  tags: ["product-title"],
-});
-
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const product = await getCachedProductTitle(Number(id));
+  const product = await getProductTitle(Number(id));
   return {
     title: product?.title,
   };
@@ -149,7 +141,7 @@ export default async function ProductDetail({
   if (isNaN(productId)) {
     return notFound();
   }
-  const product = await getCachedProduct(productId);
+  const product = await getProduct(productId);
   if (!product) {
     return notFound();
   }
@@ -188,14 +180,23 @@ export default async function ProductDetail({
     }
   };
 
+  console.log("Product Detail Page Rendered:", {
+    id: productId,
+    productData: product,
+    photoUrl: product?.photo
+  });
+
   return (
     <div className="pb-0">
-      <div className="relative aspect-square">
+      <div className="relative aspect-square w-full">
         <Image
+          unoptimized
           className="object-cover"
           fill
           src={product.photo}
           alt={product.title}
+          priority
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
         <BackButton href="/home" />
         {/* 판매 상태 배지 */}

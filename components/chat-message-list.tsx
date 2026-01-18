@@ -1,8 +1,9 @@
 "use client";
 
 import { useOptimistic, useState, useTransition, useEffect, useRef } from "react";
-import { sendMessage, getNewMessages } from "@/app/chat/[id]/actions";
+import { sendMessage } from "@/app/chat/[id]/actions";
 import { formatToTimeAgo } from "@/lib/utils";
+import ClientPusher from "pusher-js";
 import { UserIcon } from "@heroicons/react/24/solid";
 import Image from "next/image";
 
@@ -46,8 +47,29 @@ export default function ChatMessageList({
   >(
     messages,
     (state, newMessage: OptimisticMessage) => {
+      // 만약 이미 있는 메시지면 추가하지 않음 (Pusher 로직과 상호작용 대비)
+      if (state.some((m) => m.id === newMessage.id)) {
+        return state;
+      }
       return [...state, newMessage];
     }
+  );
+
+  // 실제 메시지 ID 셋 (렌더링 단 중복 방지용)
+  const realMessageIds = new Set(messages.map((m) => m.id));
+
+  // 최종 노출 메시지: 낙관적 메시지 중 이미 '실제'로 승격된 것은 제외
+  const displayMessages = optimisticMessages.filter((msg) => {
+    if (msg.isOptimistic) return true; // 아직 임시 상태인 것은 보여줌
+    return true; // useOptimistic이 이미 state와 병합해주므로 기본 리턴
+  });
+  // 사실 useOptimistic의 첫번째 인자가 messages이므로, 
+  // transition이 끝나면 optimisticMessages는 자동으로 messages와 같아집니다.
+  // 중복은 transition이 "끝나는 찰나"에 발생합니다.
+
+  // 가장 확실한 방법: ID 기반 유니크 리스트 생성
+  const uniqueMessages = Array.from(
+    new Map(optimisticMessages.map((m) => [m.id, m])).values()
   );
 
   const lastMessageIdRef = useRef<number | null>(
@@ -62,35 +84,34 @@ export default function ChatMessageList({
   // 자동 스크롤: 메시지가 추가될 때마다 맨 아래로 스크롤
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [optimisticMessages]);
+  }, [uniqueMessages]);
 
-  // Polling 로직: 2초마다 새 메시지 확인
+  // Pusher 실시간 구독
   useEffect(() => {
-    const interval = setInterval(async () => {
-      const newMessages = await getNewMessages(
-        chatRoomId,
-        lastMessageIdRef.current
-      );
+    const pusherClient = new ClientPusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+    });
 
-      if (newMessages.length > 0) {
-        setMessages((prev) => {
-          // 중복 방지: 이미 있는 메시지는 제외
-          const existingIds = new Set(prev.map((m) => m.id));
-          const uniqueNewMessages = newMessages.filter(
-            (m) => !existingIds.has(m.id)
-          );
-          if (uniqueNewMessages.length > 0) {
-            const updated = [...prev, ...uniqueNewMessages];
-            lastMessageIdRef.current = updated[updated.length - 1].id;
-            return updated;
-          }
+    const channel = pusherClient.subscribe(`chat-room-${chatRoomId}`);
+
+    channel.bind("new-message", (newMessage: OptimisticMessage) => {
+      setMessages((prev) => {
+        // 중복 방지: 이미 있는 메시지는 제외
+        if (prev.some((m) => m.id === newMessage.id)) {
           return prev;
-        });
-      }
-    }, 2000); // 2초마다 확인
+        }
+        // 내가 보낸 메시지는 Pusher로 받아도 무시 (서버 액션 결과로 처리하여 낙관적 업데이트와 자연스런 교체 유도)
+        if (newMessage.userId === currentUserId) {
+          return prev;
+        }
+        return [...prev, newMessage];
+      });
+    });
 
-    return () => clearInterval(interval);
-  }, [chatRoomId]);
+    return () => {
+      pusherClient.unsubscribe(`chat-room-${chatRoomId}`);
+    };
+  }, [chatRoomId, currentUserId]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -108,9 +129,9 @@ export default function ChatMessageList({
 
     // 서버 액션 호출 및 낙관적 업데이트
     startTransition(async () => {
-      // 임시 메시지 생성
+      // 임시 메시지 생성 (진짜 ID와 겹치지 않게 음수 사용)
       const optimisticMessage: OptimisticMessage = {
-        id: Date.now(), // 임시 ID
+        id: -Date.now(), // 임시 ID
         payload: messagePayload,
         created_at: new Date(),
         userId: currentUserId,
@@ -130,8 +151,10 @@ export default function ChatMessageList({
       if (result?.error) {
         setError(result.error);
         window.location.reload(); // 에러 발생 시 롤백
+      } else if (result?.message) {
+        // 성공 시 받아온 진짜 메시지로 상태 업데이트 (이 시점에 transition이 끝나며 낙관적 메시지는 사라짐)
+        setMessages((prev) => [...prev, result.message as OptimisticMessage]);
       }
-      // 성공 시 Polling이 자동으로 새 메시지를 가져옴
     });
   };
 
@@ -139,22 +162,21 @@ export default function ChatMessageList({
     <>
       {/* 메시지 리스트 영역 */}
       <div className="flex-1 overflow-y-auto p-5">
-        {optimisticMessages.length === 0 ? (
+        {uniqueMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-neutral-400">
             <p className="text-lg">아직 메시지가 없습니다.</p>
             <p className="text-sm mt-2">첫 번째 메시지를 보내보세요!</p>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {optimisticMessages.map((msg) => {
+            {uniqueMessages.map((msg) => {
               const isMyMessage = msg.userId === currentUserId;
-              
+
               return (
                 <div
                   key={msg.id}
-                  className={`flex gap-3 ${isMyMessage ? "flex-row-reverse" : ""} ${
-                    msg.isOptimistic ? "opacity-60" : ""
-                  }`}
+                  className={`flex gap-3 ${isMyMessage ? "flex-row-reverse" : ""} ${msg.isOptimistic ? "opacity-60" : ""
+                    }`}
                 >
                   {/* 아바타 */}
                   {!isMyMessage && (
@@ -174,7 +196,7 @@ export default function ChatMessageList({
                       )}
                     </div>
                   )}
-                  
+
                   {/* 메시지 내용 */}
                   <div className={`flex flex-col gap-1 ${isMyMessage ? "items-end" : "items-start"} max-w-[70%]`}>
                     {!isMyMessage && msg.user.username && (
@@ -183,11 +205,10 @@ export default function ChatMessageList({
                       </span>
                     )}
                     <div
-                      className={`px-4 py-2 rounded-lg ${
-                        isMyMessage
-                          ? "bg-orange-500 text-white"
-                          : "bg-neutral-700 text-white"
-                      }`}
+                      className={`px-4 py-2 rounded-lg ${isMyMessage
+                        ? "bg-orange-500 text-white"
+                        : "bg-neutral-700 text-white"
+                        }`}
                     >
                       <p className="text-sm whitespace-pre-wrap break-words">
                         {msg.payload}
