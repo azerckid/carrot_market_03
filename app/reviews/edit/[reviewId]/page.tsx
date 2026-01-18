@@ -1,4 +1,6 @@
 import db from "@/lib/db";
+import { reviews } from "@/drizzle/schema";
+import { eq } from "drizzle-orm";
 import getSession from "@/lib/session";
 import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
@@ -8,25 +10,25 @@ import EditReviewForm from "@/components/edit-review-form";
 import { formatToWon } from "@/lib/utils";
 
 async function getReview(reviewId: number) {
-  const review = await db.review.findUnique({
-    where: { id: reviewId },
-    include: {
+  const review = await db.query.reviews.findFirst({
+    where: eq(reviews.id, reviewId),
+    with: {
       reviewer: {
-        select: {
+        columns: {
           id: true,
           username: true,
           avatar: true,
         },
       },
       reviewee: {
-        select: {
+        columns: {
           id: true,
           username: true,
           avatar: true,
         },
       },
       product: {
-        select: {
+        columns: {
           id: true,
           title: true,
           price: true,
@@ -70,7 +72,7 @@ export default async function EditReviewPage({
   return (
     <div className="pb-32">
       <BackButton href="/profile" />
-      
+
       <div className="p-5">
         {/* 상품 정보 */}
         <div className="mb-6">

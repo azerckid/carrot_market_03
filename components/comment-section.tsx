@@ -34,7 +34,10 @@ export default function CommentSection({
   initialComments,
   currentUser,
 }: CommentSectionProps) {
-  const [optimisticComments, addOptimisticComment] = useOptimistic(
+  const [optimisticComments, addOptimisticComment] = useOptimistic<
+    OptimisticComment[],
+    OptimisticComment
+  >(
     initialComments,
     (state, newComment: OptimisticComment) => {
       return [newComment, ...state];
@@ -164,7 +167,7 @@ export default function CommentSection({
                     {comment.user.username}
                   </span>
                   <span className="text-xs text-neutral-400">
-                    {formatToTimeAgo(comment.created_at.toString())}
+                    {formatToTimeAgo(comment.created_at)}
                   </span>
                   {comment.isOptimistic && (
                     <span className="text-xs text-orange-500">작성 중...</span>

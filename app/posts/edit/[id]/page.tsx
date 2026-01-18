@@ -1,20 +1,24 @@
 import { notFound } from "next/navigation";
-import db from "@/lib/db";
+import db, { schema } from "@/lib/db";
 import getSession from "@/lib/session";
 import BackButton from "@/components/back-button";
 import EditPostForm from "./edit-post-form";
+import { eq } from "drizzle-orm";
+
+const { posts } = schema;
 
 async function getPost(id: number) {
-  const post = await db.post.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      userId: true,
-    },
-  });
-  return post;
+  const [post] = await db.select({
+    id: posts.id,
+    title: posts.title,
+    description: posts.description,
+    userId: posts.userId,
+  })
+  .from(posts)
+  .where(eq(posts.id, id))
+  .limit(1);
+  
+  return post || null;
 }
 
 async function getIsOwner(userId: number) {

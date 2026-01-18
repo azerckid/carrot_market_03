@@ -1,23 +1,24 @@
 import { notFound } from "next/navigation";
 import db from "@/lib/db";
+import { products } from "@/drizzle/schema";
+import { eq } from "drizzle-orm";
 import getSession from "@/lib/session";
 import { unstable_cache as nextCache } from "next/cache";
 import EditProductForm from "./edit-product-form";
 
 async function getProduct(id: number) {
-    const product = await db.product.findUnique({
-        where: {
-            id,
-        },
-        select: {
-            id: true,
-            title: true,
-            price: true,
-            description: true,
-            photo: true,
-            userId: true,
-        },
-    });
+    const [product] = await db
+        .select({
+            id: products.id,
+            title: products.title,
+            price: products.price,
+            description: products.description,
+            photo: products.photo,
+            userId: products.userId,
+        })
+        .from(products)
+        .where(eq(products.id, id));
+
     return product;
 }
 

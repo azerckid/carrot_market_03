@@ -1,4 +1,6 @@
 import db from "@/lib/db";
+import { posts, comments, likes } from "@/drizzle/schema";
+import { sql, desc, eq } from "drizzle-orm";
 import { formatToTimeAgo } from "@/lib/utils";
 import {
   ChatBubbleBottomCenterIcon,
@@ -8,22 +10,22 @@ import {
 import Link from "next/link";
 
 async function getPosts() {
-  const posts = await db.post.findMany({
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      views: true,
-      created_at: true,
+  const allPosts = await db
+    .select({
+      id: posts.id,
+      title: posts.title,
+      description: posts.description,
+      views: posts.views,
+      created_at: posts.created_at,
       _count: {
-        select: {
-          comments: true,
-          likes: true,
-        },
-      },
-    },
-  });
-  return posts;
+        likes: sql<number>`(select count(*) from ${likes} where ${likes.postId} = ${posts.id})`,
+        comments: sql<number>`(select count(*) from ${comments} where ${comments.postId} = ${posts.id})`,
+      }
+    })
+    .from(posts)
+    .orderBy(desc(posts.created_at));
+
+  return allPosts;
 }
 
 export const metadata = {
@@ -59,7 +61,7 @@ export default async function Life() {
             <p>{post.description}</p>
             <div className="flex items-center justify-between text-sm">
               <div className="flex gap-4 items-center">
-                <span>{formatToTimeAgo(post.created_at.toString())}</span>
+                <span>{formatToTimeAgo(post.created_at)}</span>
                 <span>·</span>
                 <span>조회 {post.views}</span>
               </div>

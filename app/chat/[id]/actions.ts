@@ -1,6 +1,8 @@
 "use server";
 
 import db from "@/lib/db";
+import { chatRooms, messages, users } from "@/drizzle/schema";
+import { eq, gt, and, asc } from "drizzle-orm";
 import getSession from "@/lib/session";
 import { revalidatePath } from "next/cache";
 
@@ -16,12 +18,12 @@ export async function sendMessage(chatRoomId: number, payload: string) {
   }
 
   // 채팅방 권한 확인
-  const chatRoom = await db.chatRoom.findUnique({
-    where: { id: chatRoomId },
-    select: {
+  const chatRoom = await db.query.chatRooms.findFirst({
+    where: eq(chatRooms.id, chatRoomId),
+    columns: {
       buyerId: true,
-      sellerId: true,
-    },
+      sellerId: true
+    }
   });
 
   if (!chatRoom) {
@@ -33,21 +35,16 @@ export async function sendMessage(chatRoomId: number, payload: string) {
   }
 
   // 메시지 저장
-  await db.message.create({
-    data: {
-      payload: payload.trim(),
-      chatRoomId,
-      userId: session.id,
-    },
+  await db.insert(messages).values({
+    chatRoomId,
+    payload: payload.trim(),
+    userId: session.id,
   });
 
   // 채팅방 업데이트 시간 갱신
-  await db.chatRoom.update({
-    where: { id: chatRoomId },
-    data: {
-      updated_at: new Date(),
-    },
-  });
+  await db.update(chatRooms)
+    .set({ updated_at: new Date() })
+    .where(eq(chatRooms.id, chatRoomId));
 
   revalidatePath(`/chat/${chatRoomId}`);
   revalidatePath("/chat");
@@ -68,12 +65,12 @@ export async function getNewMessages(
   }
 
   // 권한 확인
-  const chatRoom = await db.chatRoom.findUnique({
-    where: { id: chatRoomId },
-    select: {
+  const chatRoom = await db.query.chatRooms.findFirst({
+    where: eq(chatRooms.id, chatRoomId),
+    columns: {
       buyerId: true,
-      sellerId: true,
-    },
+      sellerId: true
+    }
   });
 
   if (!chatRoom) {
@@ -85,30 +82,21 @@ export async function getNewMessages(
   }
 
   // 새 메시지 조회
-  const where: any = {
-    chatRoomId,
-  };
-
-  if (lastMessageId) {
-    where.id = {
-      gt: lastMessageId,
-    };
-  }
-
-  const newMessages = await db.message.findMany({
-    where,
-    include: {
+  const newMessages = await db.query.messages.findMany({
+    where: and(
+      eq(messages.chatRoomId, chatRoomId),
+      lastMessageId ? gt(messages.id, lastMessageId) : undefined
+    ),
+    with: {
       user: {
-        select: {
+        columns: {
           id: true,
           username: true,
-          avatar: true,
-        },
-      },
+          avatar: true
+        }
+      }
     },
-    orderBy: {
-      created_at: "asc",
-    },
+    orderBy: [asc(messages.created_at)]
   });
 
   return newMessages;

@@ -1,4 +1,6 @@
 import db from "@/lib/db";
+import { products, reviews, users } from "@/drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import getSession from "@/lib/session";
 import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
@@ -8,32 +10,24 @@ import ReviewForm from "@/components/review-form";
 import { formatToWon } from "@/lib/utils";
 
 async function getProduct(productId: number) {
-  const product = await db.product.findUnique({
-    where: { id: productId },
-    select: {
-      id: true,
-      title: true,
-      price: true,
-      photo: true,
-      description: true,
-      status: true,
-      userId: true,
-      soldTo: true,
+  const product = await db.query.products.findFirst({
+    where: eq(products.id, productId),
+    with: {
       user: {
-        select: {
+        columns: {
           id: true,
           username: true,
           avatar: true,
-        },
+        }
       },
       soldToUser: {
-        select: {
+        columns: {
           id: true,
           username: true,
           avatar: true,
-        },
-      },
-    },
+        }
+      }
+    }
   });
   return product;
 }
@@ -42,6 +36,7 @@ async function checkReviewPermission(
   productId: number,
   userId: number
 ): Promise<{ canReview: boolean; revieweeId: number | null; error?: string }> {
+  // We can reuse getProduct or use a lighter query. Reusing for consistency.
   const product = await getProduct(productId);
 
   if (!product) {
@@ -57,13 +52,11 @@ async function checkReviewPermission(
   }
 
   // 이미 리뷰를 작성했는지 확인
-  const existingReview = await db.review.findUnique({
-    where: {
-      reviewerId_productId: {
-        reviewerId: userId,
-        productId,
-      },
-    },
+  const existingReview = await db.query.reviews.findFirst({
+    where: and(
+      eq(reviews.reviewerId, userId),
+      eq(reviews.productId, productId)
+    )
   });
 
   if (existingReview) {
@@ -145,7 +138,7 @@ export default async function CreateReviewPage({
   return (
     <div className="pb-32">
       <BackButton href={`/products/${productIdNum}`} />
-      
+
       <div className="p-5">
         {/* 상품 정보 */}
         <div className="mb-6">

@@ -1,6 +1,8 @@
 "use server";
 
 import db from "@/lib/db";
+import { products, chatRooms } from "@/drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import getSession from "@/lib/session";
 import { redirect } from "next/navigation";
 import { revalidatePath, revalidateTag } from "next/cache";
@@ -14,9 +16,9 @@ export async function deleteProduct(productId: number) {
   }
 
   // 상품 조회 및 소유자 확인
-  const product = await db.product.findUnique({
-    where: { id: productId },
-    select: {
+  const product = await db.query.products.findFirst({
+    where: eq(products.id, productId),
+    columns: {
       id: true,
       userId: true,
     },
@@ -32,9 +34,7 @@ export async function deleteProduct(productId: number) {
   }
 
   // 상품 삭제 (CASCADE로 채팅방도 자동 삭제됨)
-  await db.product.delete({
-    where: { id: productId },
-  });
+  await db.delete(products).where(eq(products.id, productId));
 
   // 캐시 무효화
   revalidateTag("products", "max");
@@ -51,35 +51,38 @@ export async function createChatRoom(productId: number) {
   const session = await getSession();
 
   if (!session.id) {
-    return { error: "로그인이 필요합니다." };
+    redirect("/auth/login");
+    return;
   }
 
   // 상품 정보 조회
-  const product = await db.product.findUnique({
-    where: { id: productId },
-    select: {
+  const product = await db.query.products.findFirst({
+    where: eq(products.id, productId),
+    columns: {
       id: true,
       userId: true, // 판매자 ID
     },
   });
 
   if (!product) {
-    return { error: "상품을 찾을 수 없습니다." };
+    redirect("/home");
+    return;
   }
 
   // 자신의 상품인지 확인 (이중 체크)
   if (product.userId === session.id) {
-    return { error: "자신의 상품에는 채팅할 수 없습니다." };
+    // 자신의 상품에는 채팅할 수 없음 - 상품 페이지로 리다이렉트
+    return;
   }
 
   // 기존 채팅방 확인
-  const existingChatRoom = await db.chatRoom.findFirst({
-    where: {
-      productId,
-      buyerId: session.id,
-      sellerId: product.userId,
-    },
-    select: {
+  const existingChatRoom = await db.query.chatRooms.findFirst({
+    where: and(
+      eq(chatRooms.productId, productId),
+      eq(chatRooms.buyerId, session.id),
+      eq(chatRooms.sellerId, product.userId)
+    ),
+    columns: {
       id: true,
     },
   });
@@ -91,16 +94,11 @@ export async function createChatRoom(productId: number) {
   }
 
   // 새 채팅방 생성
-  const chatRoom = await db.chatRoom.create({
-    data: {
-      productId,
-      buyerId: session.id,
-      sellerId: product.userId,
-    },
-    select: {
-      id: true,
-    },
-  });
+  const [chatRoom] = await db.insert(chatRooms).values({
+    productId,
+    buyerId: session.id,
+    sellerId: product.userId,
+  }).returning({ id: chatRooms.id });
 
   revalidatePath("/chat");
   redirect(`/chat/${chatRoom.id}`);
@@ -113,9 +111,9 @@ export async function markAsSold(productId: number, buyerId: number) {
     return { error: "로그인이 필요합니다." };
   }
 
-  const product = await db.product.findUnique({
-    where: { id: productId },
-    select: {
+  const product = await db.query.products.findFirst({
+    where: eq(products.id, productId),
+    columns: {
       id: true,
       userId: true,
       status: true,
@@ -135,13 +133,13 @@ export async function markAsSold(productId: number, buyerId: number) {
   }
 
   // 구매자가 실제로 이 상품과 채팅방이 있는지 확인
-  const chatRoom = await db.chatRoom.findFirst({
-    where: {
-      productId,
-      buyerId,
-      sellerId: session.id,
-    },
-    select: {
+  const chatRoom = await db.query.chatRooms.findFirst({
+    where: and(
+      eq(chatRooms.productId, productId),
+      eq(chatRooms.buyerId, buyerId),
+      eq(chatRooms.sellerId, session.id)
+    ),
+    columns: {
       id: true,
     },
   });
@@ -150,17 +148,16 @@ export async function markAsSold(productId: number, buyerId: number) {
     return { error: "해당 구매자와의 채팅방을 찾을 수 없습니다." };
   }
 
-  await db.product.update({
-    where: { id: productId },
-    data: {
+  await db.update(products)
+    .set({
       status: "판매완료",
       soldTo: buyerId,
       soldAt: new Date(),
-    },
-  });
+    })
+    .where(eq(products.id, productId));
 
-  revalidateTag("product-detail");
-  revalidateTag("product-title");
+  revalidateTag("product-detail", "max");
+  revalidateTag("product-title", "max");
   revalidatePath(`/products/${productId}`);
   revalidatePath("/profile");
 

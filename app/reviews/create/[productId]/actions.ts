@@ -1,6 +1,8 @@
 "use server";
 
 import db from "@/lib/db";
+import { reviews, products } from "@/drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import getSession from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -23,13 +25,11 @@ export async function createReview(
   }
 
   // 이미 리뷰를 작성했는지 확인
-  const existingReview = await db.review.findUnique({
-    where: {
-      reviewerId_productId: {
-        reviewerId: session.id,
-        productId,
-      },
-    },
+  const existingReview = await db.query.reviews.findFirst({
+    where: and(
+      eq(reviews.reviewerId, session.id),
+      eq(reviews.productId, productId)
+    )
   });
 
   if (existingReview) {
@@ -37,9 +37,9 @@ export async function createReview(
   }
 
   // 상품 정보 확인
-  const product = await db.product.findUnique({
-    where: { id: productId },
-    select: {
+  const product = await db.query.products.findFirst({
+    where: eq(products.id, productId),
+    columns: {
       id: true,
       userId: true,
       soldTo: true,
@@ -66,14 +66,12 @@ export async function createReview(
   }
 
   // 리뷰 생성
-  await db.review.create({
-    data: {
-      rating,
-      content: content?.trim() || null,
-      reviewerId: session.id,
-      revieweeId,
-      productId,
-    },
+  await db.insert(reviews).values({
+    rating,
+    content: content?.trim() || null,
+    reviewerId: session.id,
+    revieweeId,
+    productId,
   });
 
   // 캐시 무효화

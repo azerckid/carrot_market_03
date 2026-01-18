@@ -1,6 +1,8 @@
 "use server";
 
 import db from "@/lib/db";
+import { users } from "@/drizzle/schema";
+import { eq } from "drizzle-orm";
 import getSession from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -43,10 +45,10 @@ export async function updateProfile(formData: FormData) {
   }
 
   // 중복 확인
-  const existingUser = await db.user.findUnique({
-    where: { username: trimmedUsername },
-    select: { id: true },
-  });
+  const [existingUser] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.username, trimmedUsername));
 
   if (existingUser && existingUser.id !== session.id) {
     return { error: "이미 사용 중인 사용자명입니다." };
@@ -62,10 +64,10 @@ export async function updateProfile(formData: FormData) {
     trimmedEmail = email.trim();
 
     // 이메일 중복 확인
-    const existingEmailUser = await db.user.findUnique({
-      where: { email: trimmedEmail },
-      select: { id: true },
-    });
+    const [existingEmailUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, trimmedEmail));
 
     if (existingEmailUser && existingEmailUser.id !== session.id) {
       return { error: "이미 사용 중인 이메일입니다." };
@@ -79,10 +81,10 @@ export async function updateProfile(formData: FormData) {
   }
 
   // 기존 사용자 정보 조회 (아바타 URL 유지용)
-  const existingUserData = await db.user.findUnique({
-    where: { id: session.id },
-    select: { avatar: true },
-  });
+  const [existingUserData] = await db
+    .select({ avatar: users.avatar })
+    .from(users)
+    .where(eq(users.id, session.id));
 
   let avatarUrl = existingUserData?.avatar || null;
 
@@ -119,15 +121,14 @@ export async function updateProfile(formData: FormData) {
   }
 
   // 프로필 업데이트
-  await db.user.update({
-    where: { id: session.id },
-    data: {
+  await db.update(users)
+    .set({
       username: trimmedUsername,
       email: trimmedEmail,
       phone: trimmedPhone,
       avatar: avatarUrl,
-    },
-  });
+    })
+    .where(eq(users.id, session.id));
 
   // 캐시 무효화
   revalidatePath("/profile");

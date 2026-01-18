@@ -1,4 +1,6 @@
 import db from "@/lib/db";
+import { products, reviews, chatRooms, users } from "@/drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import getSession from "@/lib/session";
 import { formatToWon } from "@/lib/utils";
 import { UserIcon } from "@heroicons/react/24/solid";
@@ -20,11 +22,18 @@ async function getIsOwner(userId: number) {
 }
 
 async function getProduct(id: number) {
-  const product = await db.product.findUnique({
-    where: {
-      id,
+  // Drizzle Relational Query
+  const product = await db.query.products.findFirst({
+    where: eq(products.id, id),
+    with: {
+      user: {
+        columns: {
+          username: true,
+          avatar: true,
+        },
+      },
     },
-    select: {
+    columns: {
       id: true,
       title: true,
       price: true,
@@ -33,25 +42,20 @@ async function getProduct(id: number) {
       status: true,
       userId: true,
       soldTo: true,
-      user: {
-        select: {
-          username: true,
-          avatar: true,
-        },
-      },
-    },
+    }
   });
+
   return product;
 }
 
 async function canWriteReview(productId: number, userId: number) {
-  const product = await db.product.findUnique({
-    where: { id: productId },
-    select: {
+  const product = await db.query.products.findFirst({
+    where: eq(products.id, productId),
+    columns: {
       status: true,
       userId: true,
       soldTo: true,
-    },
+    }
   });
 
   if (!product || product.status !== "판매완료") {
@@ -67,37 +71,37 @@ async function canWriteReview(productId: number, userId: number) {
   }
 
   // 이미 리뷰를 작성했는지 확인
-  const existingReview = await db.review.findUnique({
-    where: {
-      reviewerId_productId: {
-        reviewerId: userId,
-        productId,
-      },
-    },
+  const existingReview = await db.query.reviews.findFirst({
+    where: and(
+      eq(reviews.reviewerId, userId),
+      eq(reviews.productId, productId)
+    )
   });
 
   return !existingReview;
 }
 
 async function getBuyersForProduct(productId: number, sellerId: number) {
-  const chatRooms = await db.chatRoom.findMany({
-    where: {
-      productId,
-      sellerId,
-    },
-    select: {
-      id: true,
+  const rooms = await db.query.chatRooms.findMany({
+    where: and(
+      eq(chatRooms.productId, productId),
+      eq(chatRooms.sellerId, sellerId)
+    ),
+    with: {
       buyer: {
-        select: {
+        columns: {
           id: true,
           username: true,
           avatar: true,
-        },
-      },
+        }
+      }
     },
+    columns: {
+      id: true,
+    }
   });
 
-  return chatRooms.map((chatRoom) => ({
+  return rooms.map((chatRoom) => ({
     id: chatRoom.buyer.id,
     username: chatRoom.buyer.username,
     avatar: chatRoom.buyer.avatar,
@@ -110,13 +114,11 @@ const getCachedProduct = nextCache(getProduct, ["product-detail"], {
 });
 
 async function getProductTitle(id: number) {
-  const product = await db.product.findUnique({
-    where: {
-      id,
-    },
-    select: {
+  const product = await db.query.products.findFirst({
+    where: eq(products.id, id),
+    columns: {
       title: true,
-    },
+    }
   });
   return product;
 }

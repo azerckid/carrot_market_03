@@ -1,9 +1,11 @@
 "use server";
 
-import db from "@/lib/db";
+import db, { schema } from "@/lib/db";
 import getSession from "@/lib/session";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+
+const { posts } = schema;
 
 export async function createPost(formData: FormData) {
   const session = await getSession();
@@ -38,16 +40,19 @@ export async function createPost(formData: FormData) {
   }
   
   // 게시글 생성
-  const post = await db.post.create({
-    data: {
-      title: title.trim(),
-      description: description && typeof description === "string" ? description.trim() : null,
-      userId: session.id,
-    },
-    select: {
-      id: true,
-    },
-  });
+  const [post] = await db.insert(posts).values({
+    title: title.trim(),
+    description: description && typeof description === "string" ? description.trim() : null,
+    userId: session.id,
+  }).returning({ id: posts.id });
+  
+  if (!post) {
+    return {
+      fieldErrors: {
+        root: ["게시글 생성에 실패했습니다."],
+      },
+    };
+  }
   
   // 캐시 무효화
   revalidatePath("/life");

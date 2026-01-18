@@ -1,6 +1,8 @@
 "use server";
 
 import db from "@/lib/db";
+import { reviews } from "@/drizzle/schema";
+import { eq } from "drizzle-orm";
 import getSession from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -21,9 +23,9 @@ export async function updateReview(
     return { error: "별점은 1점부터 5점까지 선택할 수 있습니다." };
   }
 
-  const review = await db.review.findUnique({
-    where: { id: reviewId },
-    select: {
+  const review = await db.query.reviews.findFirst({
+    where: eq(reviews.id, reviewId),
+    columns: {
       id: true,
       reviewerId: true,
       productId: true,
@@ -39,13 +41,12 @@ export async function updateReview(
     return { error: "수정 권한이 없습니다." };
   }
 
-  await db.review.update({
-    where: { id: reviewId },
-    data: {
+  await db.update(reviews)
+    .set({
       rating,
       content: content?.trim() || null,
-    },
-  });
+    })
+    .where(eq(reviews.id, reviewId));
 
   // 캐시 무효화
   revalidatePath(`/products/${review.productId}`);
@@ -63,9 +64,9 @@ export async function deleteReview(reviewId: number) {
     return { error: "로그인이 필요합니다." };
   }
 
-  const review = await db.review.findUnique({
-    where: { id: reviewId },
-    select: {
+  const review = await db.query.reviews.findFirst({
+    where: eq(reviews.id, reviewId),
+    columns: {
       id: true,
       reviewerId: true,
       productId: true,
@@ -81,9 +82,7 @@ export async function deleteReview(reviewId: number) {
     return { error: "삭제 권한이 없습니다." };
   }
 
-  await db.review.delete({
-    where: { id: reviewId },
-  });
+  await db.delete(reviews).where(eq(reviews.id, reviewId));
 
   // 캐시 무효화
   revalidatePath(`/products/${review.productId}`);

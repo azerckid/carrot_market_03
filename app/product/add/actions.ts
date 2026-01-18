@@ -1,6 +1,7 @@
 "use server";
 
 import db from "@/lib/db";
+import { products } from "@/drizzle/schema";
 import getSession from "@/lib/session";
 import { redirect } from "next/navigation";
 import { revalidateTag, revalidatePath } from "next/cache";
@@ -67,28 +68,26 @@ export async function uploadProduct(formData: FormData) {
     return result.error.flatten();
   }
 
-  const product = await db.product.create({
-    data: {
-      title: result.data.title,
-      description: result.data.description,
-      price: result.data.price,
-      photo: result.data.photo,
-      user: {
-        connect: {
-          id: session.id,
-        },
-      },
-    },
-    select: {
-      id: true,
-    },
-  });
+  // Use Drizzle insert
+  const [product] = await db.insert(products).values({
+    title: result.data.title,
+    description: result.data.description,
+    price: result.data.price,
+    photo: result.data.photo,
+    userId: session.id,
+    status: "판매중", // Default status if not set in schema default
+  }).returning({ id: products.id });
 
   revalidateTag("products", "max");
   revalidateTag("product-detail", "max");
   revalidateTag("product-title", "max");
   revalidatePath("/home");
-  revalidatePath(`/products/${product.id}`);
-  redirect(`/products/${product.id}`);
+  if (product) {
+    revalidatePath(`/products/${product.id}`);
+    redirect(`/products/${product.id}`);
+  } else {
+    // Should not happen
+    redirect("/home");
+  }
 }
 

@@ -1,9 +1,12 @@
 "use server";
 
-import db from "@/lib/db";
+import db, { schema } from "@/lib/db";
 import getSession from "@/lib/session";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { eq } from "drizzle-orm";
+
+const { posts } = schema;
 
 export async function updatePost(postId: number, formData: FormData) {
   const session = await getSession();
@@ -18,13 +21,13 @@ export async function updatePost(postId: number, formData: FormData) {
   }
   
   // 게시글 조회 및 소유자 확인
-  const existingPost = await db.post.findUnique({
-    where: { id: postId },
-    select: {
-      id: true,
-      userId: true,
-    },
-  });
+  const [existingPost] = await db.select({
+    id: posts.id,
+    userId: posts.userId,
+  })
+  .from(posts)
+  .where(eq(posts.id, postId))
+  .limit(1);
   
   if (!existingPost) {
     return {
@@ -64,13 +67,12 @@ export async function updatePost(postId: number, formData: FormData) {
   }
   
   // 게시글 업데이트
-  await db.post.update({
-    where: { id: postId },
-    data: {
+  await db.update(posts)
+    .set({
       title: title.trim(),
       description: description && typeof description === "string" ? description.trim() : null,
-    },
-  });
+    })
+    .where(eq(posts.id, postId));
   
   // 캐시 무효화
   revalidatePath(`/posts/${postId}`);

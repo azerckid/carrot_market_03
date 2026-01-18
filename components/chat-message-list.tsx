@@ -39,8 +39,11 @@ export default function ChatMessageList({
   currentUserId,
   currentUser,
 }: ChatMessageListProps) {
-  const [messages, setMessages] = useState(initialMessages);
-  const [optimisticMessages, addOptimisticMessage] = useOptimistic(
+  const [messages, setMessages] = useState<OptimisticMessage[]>(initialMessages);
+  const [optimisticMessages, addOptimisticMessage] = useOptimistic<
+    OptimisticMessage[],
+    OptimisticMessage
+  >(
     messages,
     (state, newMessage: OptimisticMessage) => {
       return [...state, newMessage];
@@ -191,7 +194,7 @@ export default function ChatMessageList({
                       </p>
                     </div>
                     <span className="text-xs text-neutral-500 px-1">
-                      {formatToTimeAgo(msg.created_at.toString())}
+                      {formatToTimeAgo(msg.created_at)}
                       {msg.isOptimistic && (
                         <span className="ml-1 text-orange-500">작성 중...</span>
                       )}

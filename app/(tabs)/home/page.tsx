@@ -1,24 +1,24 @@
 import ProductList from "@/components/product-list";
-import db from "@/lib/db";
+import db, { schema } from "@/lib/db";
 import { PlusIcon } from "@heroicons/react/24/solid";
 import { unstable_cache as nextCache } from "next/cache";
 import Link from "next/link";
+import { desc } from "drizzle-orm";
+
+const { products } = schema;
 
 async function getInitialProducts() {
-  const products = await db.product.findMany({
-    select: {
-      title: true,
-      price: true,
-      created_at: true,
-      photo: true,
-      id: true,
-    },
-    take: 5,
-    orderBy: {
-      created_at: "desc",
-    },
-  });
-  return products;
+  const productsList = await db.select({
+    id: products.id,
+    title: products.title,
+    price: products.price,
+    created_at: products.created_at,
+    photo: products.photo,
+  })
+  .from(products)
+  .orderBy(desc(products.created_at))
+  .limit(5);
+  return productsList;
 }
 
 const getCachedProducts = nextCache(getInitialProducts, ["home-products"], {

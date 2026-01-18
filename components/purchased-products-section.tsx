@@ -15,7 +15,7 @@ type Product = {
     id: number;
     username: string;
     avatar: string | null;
-  };
+  } | null;
 };
 
 interface PurchasedProductsSectionProps {
@@ -75,12 +75,12 @@ export default function PurchasedProductsSection({
               {/* 판매자 정보 및 구매 날짜 */}
               <div className="flex items-center gap-2 mt-1">
                 <div className="size-6 overflow-hidden rounded-full bg-neutral-700 flex items-center justify-center flex-shrink-0">
-                  {product.user.avatar ? (
+                  {product.user?.avatar ? (
                     <Image
-                      src={product.user.avatar}
+                      src={product.user?.avatar || ""}
                       width={24}
                       height={24}
-                      alt={product.user.username}
+                      alt={product.user?.username || "사용자"}
                       className="rounded-full"
                     />
                   ) : (
@@ -89,11 +89,11 @@ export default function PurchasedProductsSection({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-neutral-400 truncate">
-                    {product.user.username}
+                    {product.user?.username || "알 수 없음"}
                   </p>
                   {product.soldAt && (
                     <p className="text-xs text-neutral-500">
-                      {formatToTimeAgo(product.soldAt.toString())}
+                      {formatToTimeAgo(product.soldAt)}
                     </p>
                   )}
                 </div>

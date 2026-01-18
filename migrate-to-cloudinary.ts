@@ -1,29 +1,30 @@
 import "dotenv/config";
-import db from "./lib/db";
+import db, { schema } from "./lib/db";
 import cloudinary from "./lib/cloudinary";
 import fs from "fs/promises";
 import path from "path";
+import { eq } from "drizzle-orm";
+
+const { products } = schema;
 
 async function migrateToCloudinary() {
     try {
         console.log("마이그레이션 시작...");
 
         // 모든 제품 가져오기
-        const products = await db.product.findMany({
-            select: {
-                id: true,
-                photo: true,
-                title: true,
-            },
-        });
+        const productList = await db.select({
+            id: products.id,
+            photo: products.photo,
+            title: products.title,
+        }).from(products);
 
-        console.log(`총 ${products.length}개의 제품을 확인했습니다.`);
+        console.log(`총 ${productList.length}개의 제품을 확인했습니다.`);
 
         let migratedCount = 0;
         let skippedCount = 0;
         let errorCount = 0;
 
-        for (const product of products) {
+        for (const product of productList) {
             // 이미 Cloudinary URL인지 확인 (http:// 또는 https://로 시작)
             if (product.photo.startsWith("http://") || product.photo.startsWith("https://")) {
                 console.log(`[${product.id}] 이미 Cloudinary URL입니다: ${product.title}`);
@@ -66,10 +67,9 @@ async function migrateToCloudinary() {
                 });
 
                 // 데이터베이스 업데이트
-                await db.product.update({
-                    where: { id: product.id },
-                    data: { photo: uploadResult.secure_url },
-                });
+                await db.update(products)
+                    .set({ photo: uploadResult.secure_url })
+                    .where(eq(products.id, product.id));
 
                 console.log(`[${product.id}] ✅ 마이그레이션 완료: ${product.title}`);
                 console.log(`   로컬: ${product.photo} → Cloudinary: ${uploadResult.secure_url}`);
@@ -89,11 +89,8 @@ async function migrateToCloudinary() {
         console.log(`✅ 성공: ${migratedCount}개`);
         console.log(`⏭️  건너뜀: ${skippedCount}개 (이미 Cloudinary URL)`);
         console.log(`❌ 실패: ${errorCount}개`);
-
-        await db.$disconnect();
     } catch (error) {
         console.error("마이그레이션 중 오류 발생:", error);
-        await db.$disconnect();
         process.exit(1);
     }
 }

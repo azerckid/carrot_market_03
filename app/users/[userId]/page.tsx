@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+import db, { schema } from "@/lib/db";
 import getSession from "@/lib/session";
 import { notFound } from "next/navigation";
 import { formatToTimeAgo, formatToWon } from "@/lib/utils";
@@ -11,70 +11,115 @@ import {
 } from "@heroicons/react/24/outline";
 import { StarIcon } from "@heroicons/react/24/solid";
 import BackButton from "@/components/back-button";
+import { eq, and, desc } from "drizzle-orm";
+import { sql } from "drizzle-orm";
+
+const { users, products, reviews } = schema;
 
 async function getUserProfile(userId: number) {
-  const user = await db.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      username: true,
-      email: true,
-      avatar: true,
-      created_at: true,
-      products: {
-        where: { status: "판매중" },
-        orderBy: { created_at: "desc" },
-        take: 10,
-        select: {
-          id: true,
-          title: true,
-          price: true,
-          photo: true,
-          created_at: true,
-        },
-      },
-      _count: {
-        select: {
-          products: true,
-          revieweeReviews: true,
-        },
-      },
-    },
-  });
+  // 사용자 기본 정보 조회
+  const [user] = await db.select({
+    id: users.id,
+    username: users.username,
+    email: users.email,
+    avatar: users.avatar,
+    created_at: users.created_at,
+  })
+  .from(users)
+  .where(eq(users.id, userId))
+  .limit(1);
 
   if (!user) {
     return null;
   }
 
-  // 받은 리뷰 평균 별점 계산
-  const reviews = await db.review.findMany({
-    where: { revieweeId: userId },
-    include: {
-      reviewer: {
-        select: {
-          id: true,
-          username: true,
-          avatar: true,
-        },
-      },
-      product: {
-        select: {
-          id: true,
-          title: true,
-          photo: true,
-        },
-      },
-    },
-    orderBy: { created_at: "desc" },
-    take: 10,
-  });
+  // 판매중인 상품 조회
+  const userProducts = await db.select({
+    id: products.id,
+    title: products.title,
+    price: products.price,
+    photo: products.photo,
+    created_at: products.created_at,
+  })
+  .from(products)
+  .where(and(
+    eq(products.userId, userId),
+    eq(products.status, "판매중")
+  ))
+  .orderBy(desc(products.created_at))
+  .limit(10);
+
+  // 카운트 계산
+  const [productCount] = await db.select({
+    count: sql<number>`count(*)`.as('count'),
+  })
+  .from(products)
+  .where(eq(products.userId, userId));
+
+  const [reviewCount] = await db.select({
+    count: sql<number>`count(*)`.as('count'),
+  })
+  .from(reviews)
+  .where(eq(reviews.revieweeId, userId));
+
+  // 받은 리뷰 조회
+  const reviewList = await db.select({
+    id: reviews.id,
+    rating: reviews.rating,
+    content: reviews.content,
+    created_at: reviews.created_at,
+    reviewerId: reviews.reviewerId,
+    productId: reviews.productId,
+  })
+  .from(reviews)
+  .where(eq(reviews.revieweeId, userId))
+  .orderBy(desc(reviews.created_at))
+  .limit(10);
+
+  // 리뷰에 reviewer와 product 정보 추가
+  const reviewsWithDetails = await Promise.all(
+    reviewList.map(async (review) => {
+      const [reviewer] = await db.select({
+        id: users.id,
+        username: users.username,
+        avatar: users.avatar,
+      })
+      .from(users)
+      .where(eq(users.id, review.reviewerId))
+      .limit(1);
+
+      const [product] = await db.select({
+        id: products.id,
+        title: products.title,
+        photo: products.photo,
+      })
+      .from(products)
+      .where(eq(products.id, review.productId))
+      .limit(1);
+
+      return {
+        ...review,
+        reviewer: reviewer!,
+        product: product!,
+      };
+    })
+  );
 
   const avgRating =
-    reviews.length > 0
-      ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+    reviewsWithDetails.length > 0
+      ? reviewsWithDetails.reduce((sum, review) => sum + review.rating, 0) / reviewsWithDetails.length
       : 0;
 
-  return { ...user, reviews, avgRating };
+  return {
+    ...user,
+    products: userProducts,
+    _count: {
+      products: productCount?.count || 0,
+      revieweeReviews: reviewCount?.count || 0,
+    },
+    reviews: reviewsWithDetails,
+    avgRating,
+  };
 }
 
 export default async function UserProfilePage({
@@ -127,7 +172,7 @@ export default async function UserProfilePage({
           <p className="text-sm text-neutral-400 mb-2">{userProfile.email}</p>
         )}
         <p className="text-xs text-neutral-500">
-          가입일: {formatToTimeAgo(userProfile.created_at.toString())}
+          가입일: {formatToTimeAgo(userProfile.created_at)}
         </p>
       </div>
 
@@ -279,7 +324,7 @@ export default async function UserProfilePage({
                     </div>
                   </div>
                   <span className="text-xs text-neutral-500">
-                    {formatToTimeAgo(review.created_at.toString())}
+                    {formatToTimeAgo(review.created_at)}
                   </span>
                 </div>
 

@@ -6,6 +6,8 @@ import {
   PASSWORD_REGEX_ERROR,
 } from "@/lib/constants";
 import db from "@/lib/db";
+import { users } from "@/drizzle/schema";
+import { eq } from "drizzle-orm";
 import { logInUser } from "@/lib/auth";
 import { z } from "zod";
 
@@ -36,14 +38,12 @@ const formSchema = z
     confirm_password: z.string().min(PASSWORD_MIN_LENGTH),
   })
   .superRefine(async ({ username }, ctx) => {
-    const user = await db.user.findUnique({
-      where: {
-        username,
-      },
-      select: {
-        id: true,
-      },
-    });
+    // Drizzle: Check username existence
+    const [user] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.username, username));
+
     if (user) {
       ctx.addIssue({
         code: "custom",
@@ -52,17 +52,14 @@ const formSchema = z
         fatal: true,
       });
     }
-    return z.NEVER;
   })
   .superRefine(async ({ email }, ctx) => {
-    const user = await db.user.findUnique({
-      where: {
-        email,
-      },
-      select: {
-        id: true,
-      },
-    });
+    // Drizzle: Check email existence
+    const [user] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, email));
+
     if (user) {
       ctx.addIssue({
         code: "custom",
@@ -71,7 +68,6 @@ const formSchema = z
         fatal: true,
       });
     }
-    return z.NEVER;
   })
   .refine(checkPasswords, {
     message: "Both passwords should be the same!",
@@ -110,17 +106,21 @@ async function createAccountResponse(validatedData: {
   password: string;
 }) {
   const hashedPassword = await bcrypt.hash(validatedData.password, 12);
-  const user = await db.user.create({
-    data: {
+
+  // Drizzle: Insert user
+  const [user] = await db
+    .insert(users)
+    .values({
       username: validatedData.username,
       email: validatedData.email,
       password: hashedPassword,
-    },
-    select: {
-      id: true,
-    },
-  });
-  await logInUser(user.id);
+    })
+    .returning({ id: users.id });
+
+  // Note: .returning() returns an array, so we destructure the first element.
+  if (user) {
+    await logInUser(user.id);
+  }
 }
 
 /**
@@ -130,7 +130,6 @@ export async function createAccount(prevState: any, formData: FormData) {
   // Request 처리: 검증
   const validationResult = await validateCreateAccountRequest(formData);
   if (!validationResult.success) {
-    console.log(validationResult.error);
     return validationResult.error;
   }
 

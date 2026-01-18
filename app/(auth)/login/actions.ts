@@ -5,19 +5,18 @@ import {
     PASSWORD_REGEX,
     PASSWORD_REGEX_ERROR,
 } from "@/lib/constants";
-import db from "@/lib/db";
+import db, { schema } from "@/lib/db";
 import { z } from "zod";
 import { logInUser } from "@/lib/auth";
+import { eq } from "drizzle-orm";
+
+const { users } = schema;
 
 const checkEmailExists = async (email: string) => {
-    const user = await db.user.findUnique({
-        where: {
-            email,
-        },
-        select: {
-            id: true,
-        },
-    });
+    const [user] = await db.select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
     // if(user){
     //   return true
     // } else {
@@ -48,21 +47,29 @@ export async function logIn(prevState: any, formData: FormData) {
     if (!result.success) {
         return result.error.flatten();
     } else {
-        const user = await db.user.findUnique({
-            where: {
-                email: result.data.email,
-            },
-            select: {
-                id: true,
-                password: true,
-            },
-        });
+        const [user] = await db.select({
+            id: users.id,
+            password: users.password,
+        })
+        .from(users)
+        .where(eq(users.email, result.data.email))
+        .limit(1);
+        
+        if (!user) {
+            return {
+                fieldErrors: {
+                    password: ["Wrong password."],
+                    email: [],
+                },
+            };
+        }
+        
         const ok = await bcrypt.compare(
             result.data.password,
-            user!.password ?? "xxxx"
+            user.password ?? "xxxx"
         );
         if (ok) {
-            await logInUser(user!.id);
+            await logInUser(user.id);
         } else {
             return {
                 fieldErrors: {

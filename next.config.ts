@@ -13,6 +13,13 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  serverExternalPackages: [
+    "@libsql/client",
+    "@libsql/isomorphic-fetch",
+    "@libsql/isomorphic-ws",
+    "@libsql/hrana-client",
+    "@prisma/adapter-libsql",
+  ],
 };
 
 export default nextConfig;

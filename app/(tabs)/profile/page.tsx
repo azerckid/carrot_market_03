@@ -1,4 +1,6 @@
 import db from "@/lib/db";
+import { users, posts, products, reviews, comments, likes, chatRooms } from "@/drizzle/schema";
+import { eq, desc, and, sql } from "drizzle-orm";
 import getSession from "@/lib/session";
 import { notFound, redirect } from "next/navigation";
 import { formatToTimeAgo, formatToWon } from "@/lib/utils";
@@ -20,161 +22,130 @@ import DeleteReviewButton from "@/components/delete-review-button";
 async function getUser() {
   const session = await getSession();
   if (session.id) {
-    const user = await db.user.findUnique({
-      where: {
-        id: session.id,
-      },
-      select: {
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, session.id),
+      columns: {
         id: true,
         username: true,
         email: true,
         avatar: true,
         created_at: true,
-        _count: {
-          select: {
-            posts: true,
-            products: true,
-            Comment: true,
-          },
-        },
       },
+      extras: {
+        postsCount: sql<number>`(select count(*) from ${posts} where ${posts.userId} = ${users.id})`.as('posts_count'),
+        productsCount: sql<number>`(select count(*) from ${products} where ${products.userId} = ${users.id})`.as('products_count'),
+        commentsCount: sql<number>`(select count(*) from ${comments} where ${comments.userId} = ${users.id})`.as('comments_count'),
+      }
     });
+
     if (user) {
-      return user;
+      // Map Drizzle result to expected structure with _count
+      return {
+        ...user,
+        _count: {
+          posts: user.postsCount,
+          products: user.productsCount,
+          Comment: user.commentsCount,
+        }
+      };
     }
   }
   notFound();
 }
 
 async function getUserPosts(userId: number) {
-  const posts = await db.post.findMany({
-    where: {
-      userId,
-    },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      views: true,
-      created_at: true,
-      _count: {
-        select: {
-          comments: true,
-          likes: true,
-        },
-      },
-    },
-    take: 5,
-    orderBy: {
-      created_at: "desc",
-    },
+  const userPosts = await db.query.posts.findMany({
+    where: eq(posts.userId, userId),
+    limit: 5,
+    orderBy: [desc(posts.created_at)],
+    extras: {
+      likesCount: sql<number>`(select count(*) from ${likes} where ${likes.postId} = ${posts.id})`.as('likes_count'),
+      commentsCount: sql<number>`(select count(*) from ${comments} where ${comments.postId} = ${posts.id})`.as('comments_count'),
+    }
   });
-  return posts;
+
+  // Transform to match Prisma structure for UI compatibility
+  return userPosts.map(p => ({
+    ...p,
+    _count: {
+      likes: p.likesCount,
+      comments: p.commentsCount
+    }
+  }));
 }
 
 async function getSoldProducts(userId: number) {
-  const products = await db.product.findMany({
-    where: {
-      userId,
-    },
-    select: {
-      id: true,
-      title: true,
-      price: true,
-      photo: true,
-      status: true,
-      created_at: true,
-      _count: {
-        select: { chatRooms: true },
-      },
-    },
-    orderBy: {
-      created_at: "desc",
-    },
+  const soldProducts = await db.query.products.findMany({
+    where: eq(products.userId, userId),
+    orderBy: [desc(products.created_at)],
+    extras: {
+      chatRoomsCount: sql<number>`(select count(*) from ${chatRooms} where ${chatRooms.productId} = ${products.id})`.as('chat_rooms_count')
+    }
   });
-  return products;
+
+  return soldProducts.map(p => ({
+    ...p,
+    _count: {
+      chatRooms: p.chatRoomsCount
+    }
+  }));
 }
 
 async function getPurchasedProducts(userId: number) {
-  const products = await db.product.findMany({
-    where: {
-      soldTo: userId,
-    },
-    select: {
-      id: true,
-      title: true,
-      price: true,
-      photo: true,
-      soldAt: true,
+  const purchasedProducts = await db.query.products.findMany({
+    where: eq(products.soldTo, userId),
+    orderBy: [desc(products.soldAt || products.created_at)], // Fallback to created_at if soldAt is null/undefined in schema type, or use soldAt if available
+    with: {
       user: {
-        select: {
+        columns: {
           id: true,
           username: true,
           avatar: true,
-        },
-      },
-    },
-    orderBy: {
-      soldAt: "desc",
-    },
+        }
+      }
+    }
   });
-  return products;
+  return purchasedProducts;
 }
 
 async function getReceivedReviews(userId: number) {
-  const reviews = await db.review.findMany({
-    where: { revieweeId: userId },
-    include: {
+  const receivedReviews = await db.query.reviews.findMany({
+    where: eq(reviews.revieweeId, userId),
+    orderBy: [desc(reviews.created_at)],
+    with: {
       reviewer: {
-        select: {
-          id: true,
-          username: true,
-          avatar: true,
-        },
+        columns: { id: true, username: true, avatar: true }
       },
       product: {
-        select: {
-          id: true,
-          title: true,
-          photo: true,
-        },
-      },
-    },
-    orderBy: { created_at: "desc" },
+        columns: { id: true, title: true, photo: true }
+      }
+    }
   });
 
   // 평균 별점 계산
   const avgRating =
-    reviews.length > 0
-      ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+    receivedReviews.length > 0
+      ? receivedReviews.reduce((sum, review) => sum + review.rating, 0) / receivedReviews.length
       : 0;
 
-  return { reviews, avgRating };
+  return { reviews: receivedReviews, avgRating };
 }
 
 async function getWrittenReviews(userId: number) {
-  const reviews = await db.review.findMany({
-    where: { reviewerId: userId },
-    include: {
+  const writtenReviews = await db.query.reviews.findMany({
+    where: eq(reviews.reviewerId, userId),
+    orderBy: [desc(reviews.created_at)],
+    with: {
       reviewee: {
-        select: {
-          id: true,
-          username: true,
-          avatar: true,
-        },
+        columns: { id: true, username: true, avatar: true }
       },
       product: {
-        select: {
-          id: true,
-          title: true,
-          photo: true,
-        },
-      },
-    },
-    orderBy: { created_at: "desc" },
+        columns: { id: true, title: true, photo: true }
+      }
+    }
   });
 
-  return reviews;
+  return writtenReviews;
 }
 
 export default async function Profile() {
@@ -184,14 +155,14 @@ export default async function Profile() {
   const purchasedProducts = await getPurchasedProducts(user.id);
   const { reviews, avgRating } = await getReceivedReviews(user.id);
   const writtenReviews = await getWrittenReviews(user.id);
-  
+
   const logOut = async () => {
     "use server";
     const session = await getSession();
     session.destroy();
     redirect("/");
   };
-  
+
   return (
     <div className="p-5 text-white pb-32">
       {/* 프로필 헤더 섹션 */}
@@ -214,7 +185,7 @@ export default async function Profile() {
           <p className="text-sm text-neutral-400 mb-2">{user.email}</p>
         )}
         <p className="text-xs text-neutral-500">
-          가입일: {formatToTimeAgo(user.created_at.toString())}
+          가입일: {formatToTimeAgo(user.created_at)}
         </p>
       </div>
 
@@ -273,7 +244,7 @@ export default async function Profile() {
                 )}
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex gap-3 items-center">
-                    <span>{formatToTimeAgo(post.created_at.toString())}</span>
+                    <span>{formatToTimeAgo(post.created_at)}</span>
                     <span>·</span>
                     <span>조회 {post.views}</span>
                   </div>
@@ -320,12 +291,12 @@ export default async function Profile() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="size-10 overflow-hidden rounded-full bg-neutral-700 flex items-center justify-center flex-shrink-0">
-                      {review.reviewee.avatar ? (
+                      {review.reviewee?.avatar ? (
                         <Image
-                          src={review.reviewee.avatar}
+                          src={review.reviewee?.avatar || ""}
                           width={40}
                           height={40}
-                          alt={review.reviewee.username}
+                          alt={review.reviewee?.username || "사용자"}
                           className="rounded-full"
                         />
                       ) : (
@@ -333,16 +304,15 @@ export default async function Profile() {
                       )}
                     </div>
                     <div>
-                      <p className="font-semibold">{review.reviewee.username}</p>
+                      <p className="font-semibold">{review.reviewee?.username || "알 수 없음"}</p>
                       <div className="flex items-center gap-1">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <StarIcon
                             key={star}
-                            className={`size-4 ${
-                              star <= review.rating
-                                ? "text-yellow-400"
-                                : "text-neutral-600"
-                            }`}
+                            className={`size-4 ${star <= review.rating
+                              ? "text-yellow-400"
+                              : "text-neutral-600"
+                              }`}
                           />
                         ))}
                       </div>
@@ -357,7 +327,7 @@ export default async function Profile() {
                     </Link>
                     <DeleteReviewButton reviewId={review.id} />
                     <span className="text-xs text-neutral-500">
-                      {formatToTimeAgo(review.created_at.toString())}
+                      {formatToTimeAgo(review.created_at)}
                     </span>
                   </div>
                 </div>
@@ -428,12 +398,12 @@ export default async function Profile() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="size-10 overflow-hidden rounded-full bg-neutral-700 flex items-center justify-center flex-shrink-0">
-                      {review.reviewer.avatar ? (
+                      {review.reviewer?.avatar ? (
                         <Image
-                          src={review.reviewer.avatar}
+                          src={review.reviewer?.avatar || ""}
                           width={40}
                           height={40}
-                          alt={review.reviewer.username}
+                          alt={review.reviewer?.username || "사용자"}
                           className="rounded-full"
                         />
                       ) : (
@@ -441,23 +411,22 @@ export default async function Profile() {
                       )}
                     </div>
                     <div>
-                      <p className="font-semibold">{review.reviewer.username}</p>
+                      <p className="font-semibold">{review.reviewer?.username || "알 수 없음"}</p>
                       <div className="flex items-center gap-1">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <StarIcon
                             key={star}
-                            className={`size-4 ${
-                              star <= review.rating
-                                ? "text-yellow-400"
-                                : "text-neutral-600"
-                            }`}
+                            className={`size-4 ${star <= review.rating
+                              ? "text-yellow-400"
+                              : "text-neutral-600"
+                              }`}
                           />
                         ))}
                       </div>
                     </div>
                   </div>
                   <span className="text-xs text-neutral-500">
-                    {formatToTimeAgo(review.created_at.toString())}
+                    {formatToTimeAgo(review.created_at)}
                   </span>
                 </div>
 

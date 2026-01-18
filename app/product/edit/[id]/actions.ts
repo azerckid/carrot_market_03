@@ -1,6 +1,8 @@
 "use server";
 
 import db from "@/lib/db";
+import { products } from "@/drizzle/schema";
+import { eq } from "drizzle-orm";
 import getSession from "@/lib/session";
 import { redirect } from "next/navigation";
 import { revalidateTag, revalidatePath } from "next/cache";
@@ -38,16 +40,14 @@ export async function updateProduct(productId: number, formData: FormData) {
     }
 
     // 제품 조회 및 소유자 확인
-    const existingProduct = await db.product.findUnique({
-        where: {
-            id: productId,
-        },
-        select: {
-            id: true,
-            userId: true,
-            photo: true,
-        },
-    });
+    const [existingProduct] = await db
+        .select({
+            id: products.id,
+            userId: products.userId,
+            photo: products.photo,
+        })
+        .from(products)
+        .where(eq(products.id, productId));
 
     if (!existingProduct) {
         return {
@@ -118,17 +118,14 @@ export async function updateProduct(productId: number, formData: FormData) {
     }
 
     // 데이터베이스 업데이트
-    await db.product.update({
-        where: {
-            id: productId,
-        },
-        data: {
+    await db.update(products)
+        .set({
             title: result.data.title,
             description: result.data.description,
             price: result.data.price,
             photo: result.data.photo,
-        },
-    });
+        })
+        .where(eq(products.id, productId));
 
     // 캐시 무효화 (통합 캐싱 전략)
     revalidateTag("products", "max");

@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+import db, { schema } from "@/lib/db";
 import getSession from "@/lib/session";
 import { formatToTimeAgo } from "@/lib/utils";
 import { notFound } from "next/navigation";
@@ -6,57 +6,101 @@ import Image from "next/image";
 import Link from "next/link";
 import { UserIcon } from "@heroicons/react/24/solid";
 import MarkChatRead from "@/components/mark-chat-read";
+import { eq, or, desc } from "drizzle-orm";
+
+const { chatRooms, products, users, messages } = schema;
 
 async function getChatRooms(userId: number) {
-  const chatRooms = await db.chatRoom.findMany({
-    where: {
-      OR: [
-        { buyerId: userId },   // 구매자로 참여한 채팅방
-        { sellerId: userId },   // 판매자로 참여한 채팅방
-      ],
-    },
-    include: {
-      product: {
-        select: {
-          id: true,
-          title: true,
-          photo: true,
-        },
-      },
-      buyer: {
-        select: {
-          id: true,
-          username: true,
-          avatar: true,
-        },
-      },
-      seller: {
-        select: {
-          id: true,
-          username: true,
-          avatar: true,
-        },
-      },
-      messages: {
-        take: 1,
-        orderBy: {
-          created_at: "desc",
-        },
-        include: {
-          user: {
-            select: {
-              username: true,
-            },
-          },
-        },
-      },
-    },
-    orderBy: {
-      updated_at: "desc",
-    },
-  });
+  // 채팅방 목록 조회
+  const chatRoomList = await db.select({
+    id: chatRooms.id,
+    buyerId: chatRooms.buyerId,
+    sellerId: chatRooms.sellerId,
+    productId: chatRooms.productId,
+    updated_at: chatRooms.updated_at,
+  })
+  .from(chatRooms)
+  .where(
+    or(
+      eq(chatRooms.buyerId, userId),
+      eq(chatRooms.sellerId, userId)
+    )
+  )
+  .orderBy(desc(chatRooms.updated_at));
+
+  // 각 채팅방에 관련 데이터 조회
+  const chatRoomsWithData = await Promise.all(
+    chatRoomList.map(async (room) => {
+      // 상품 정보
+      const [product] = await db.select({
+        id: products.id,
+        title: products.title,
+        photo: products.photo,
+      })
+      .from(products)
+      .where(eq(products.id, room.productId))
+      .limit(1);
+
+      // 구매자 정보
+      const [buyer] = await db.select({
+        id: users.id,
+        username: users.username,
+        avatar: users.avatar,
+      })
+      .from(users)
+      .where(eq(users.id, room.buyerId))
+      .limit(1);
+
+      // 판매자 정보
+      const [seller] = await db.select({
+        id: users.id,
+        username: users.username,
+        avatar: users.avatar,
+      })
+      .from(users)
+      .where(eq(users.id, room.sellerId))
+      .limit(1);
+
+      // 마지막 메시지 조회
+      const lastMessages = await db.select({
+        id: messages.id,
+        payload: messages.payload,
+        created_at: messages.created_at,
+        userId: messages.userId,
+      })
+      .from(messages)
+      .where(eq(messages.chatRoomId, room.id))
+      .orderBy(desc(messages.created_at))
+      .limit(1);
+
+      const lastMessage = lastMessages[0];
+      let messageUser = null;
+      
+      if (lastMessage) {
+        const [user] = await db.select({
+          username: users.username,
+        })
+        .from(users)
+        .where(eq(users.id, lastMessage.userId))
+        .limit(1);
+        
+        messageUser = user;
+      }
+
+      return {
+        ...room,
+        product: product!,
+        buyer: buyer!,
+        seller: seller!,
+        messages: lastMessage ? [{
+          ...lastMessage,
+          user: messageUser!,
+        }] : [],
+      };
+    })
+  );
   
-  return chatRooms;
+  return chatRoomsWithData;
 }
 
 export const metadata = {
@@ -136,7 +180,7 @@ export default async function Chat() {
                         {lastMessage.user.username}: {lastMessage.payload}
                       </span>
                       <span className="text-xs text-neutral-600">
-                        {formatToTimeAgo(lastMessage.created_at.toString())}
+                        {formatToTimeAgo(lastMessage.created_at)}
                       </span>
                     </div>
                   ) : (

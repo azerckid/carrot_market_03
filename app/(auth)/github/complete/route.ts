@@ -1,4 +1,6 @@
 import db from "@/lib/db";
+import { users } from "@/drizzle/schema";
+import { eq } from "drizzle-orm";
 import { logInUser } from "@/lib/auth";
 import { NextRequest } from "next/server";
 
@@ -69,42 +71,44 @@ export async function GET(request: NextRequest) {
   }
   const emailData = emails.find((email: any) => email.primary === true && email.verified === true) || emails[0];
   const email = emailData?.email;
-  const user = await db.user.findUnique({
-    where: {
-      github_id: id + "",
-    },
-    select: {
-      id: true,
-    },
-  });
+
+  // Drizzle: Check if user exists by github_id
+  const [user] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.github_id, id + ""));
+
   if (user) {
     await logInUser(user.id);
     return;
   }
+
   let username = login;
-  const existingUser = await db.user.findUnique({
-    where: {
-      username: login,
-    },
-    select: {
-      id: true,
-    },
-  });
+
+  // Drizzle: Check if username is taken
+  const [existingUser] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.username, login));
+
   if (existingUser) {
     username = `${login}-github`;
   }
-  const newUser = await db.user.create({
-    data: {
+
+  // Drizzle: Create new user
+  const [newUser] = await db
+    .insert(users)
+    .values({
       username: username,
       github_id: id + "",
       avatar: avatar_url,
       email: email,
-    },
-    select: {
-      id: true,
-    },
-  });
-  await logInUser(newUser.id);
+    })
+    .returning({ id: users.id });
+
+  if (newUser) {
+    await logInUser(newUser.id);
+  }
   return;
 }
 

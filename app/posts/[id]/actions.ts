@@ -1,36 +1,34 @@
 "use server";
 
 import db from "@/lib/db";
+import { likes, comments, posts } from "@/drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import getSession from "@/lib/session";
 import { revalidateTag, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 export async function likePost(postId: number) {
-  await new Promise((r) => setTimeout(r, 10000));
+  // await new Promise((r) => setTimeout(r, 10000));
   const session = await getSession();
   try {
-    await db.like.create({
-      data: {
-        postId,
-        userId: session.id!,
-      },
+    await db.insert(likes).values({
+      postId,
+      userId: session.id!,
     });
     revalidateTag(`like-status-${postId}`, "max");
   } catch (e) { }
 }
 
 export async function dislikePost(postId: number) {
-  await new Promise((r) => setTimeout(r, 10000));
+  // await new Promise((r) => setTimeout(r, 10000));
   try {
     const session = await getSession();
-    await db.like.delete({
-      where: {
-        userId_postId: {
-          userId: session.id!,
-          postId,
-        },
-      },
-    });
+    await db.delete(likes).where(
+      and(
+        eq(likes.postId, postId),
+        eq(likes.userId, session.id!)
+      )
+    );
     revalidateTag(`like-status-${postId}`, "max");
   } catch (e) { }
 }
@@ -50,9 +48,9 @@ export async function createComment(postId: number, payload: string) {
 
   try {
     // 게시글 존재 확인
-    const post = await db.post.findUnique({
-      where: { id: postId },
-      select: { id: true },
+    const post = await db.query.posts.findFirst({
+      where: eq(posts.id, postId),
+      columns: { id: true },
     });
 
     if (!post) {
@@ -60,12 +58,10 @@ export async function createComment(postId: number, payload: string) {
     }
 
     // 댓글 생성
-    await db.comment.create({
-      data: {
-        payload: payload.trim(),
-        postId,
-        userId: session.id,
-      },
+    await db.insert(comments).values({
+      payload: payload.trim(),
+      postId,
+      userId: session.id,
     });
 
     // 캐시 무효화
@@ -87,9 +83,9 @@ export async function deletePost(postId: number) {
   }
 
   // 게시글 조회 및 소유자 확인
-  const post = await db.post.findUnique({
-    where: { id: postId },
-    select: {
+  const post = await db.query.posts.findFirst({
+    where: eq(posts.id, postId),
+    columns: {
       id: true,
       userId: true,
     },
@@ -105,9 +101,7 @@ export async function deletePost(postId: number) {
   }
 
   // 게시글 삭제 (CASCADE로 댓글도 자동 삭제됨)
-  await db.post.delete({
-    where: { id: postId },
-  });
+  await db.delete(posts).where(eq(posts.id, postId));
 
   // 캐시 무효화
   revalidatePath("/life");

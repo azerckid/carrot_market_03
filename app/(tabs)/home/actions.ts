@@ -1,22 +1,23 @@
 "use server";
 
 import db from "@/lib/db";
+import { products } from "@/drizzle/schema";
+import { desc } from "drizzle-orm";
 
 export async function getMoreProducts(page: number) {
-  const products = await db.product.findMany({
-    select: {
-      title: true,
-      price: true,
-      created_at: true,
-      photo: true,
-      id: true,
-    },
-    skip: page * 5,
-    take: 5,
-    orderBy: {
-      created_at: "desc",
-    },
-  });
-  return products;
+  const productList = await db
+    .select({
+      title: products.title,
+      price: products.price,
+      created_at: products.created_at,
+      photo: products.photo,
+      id: products.id,
+    })
+    .from(products)
+    .orderBy(desc(products.created_at))
+    .limit(5)
+    .offset(page * 5);
+
+  return productList;
 }
 

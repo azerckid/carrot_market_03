@@ -1,4 +1,6 @@
 import db from "@/lib/db";
+import { chatRooms, users } from "@/drizzle/schema";
+import { eq, asc } from "drizzle-orm";
 import getSession from "@/lib/session";
 import { formatToWon } from "@/lib/utils";
 import { UserIcon } from "@heroicons/react/24/solid";
@@ -9,11 +11,11 @@ import { notFound } from "next/navigation";
 import ChatMessageList from "@/components/chat-message-list";
 
 async function getChatRoom(chatRoomId: number, userId: number) {
-  const chatRoom = await db.chatRoom.findUnique({
-    where: { id: chatRoomId },
-    include: {
+  const chatRoom = await db.query.chatRooms.findFirst({
+    where: eq(chatRooms.id, chatRoomId),
+    with: {
       product: {
-        select: {
+        columns: {
           id: true,
           title: true,
           photo: true,
@@ -21,33 +23,31 @@ async function getChatRoom(chatRoomId: number, userId: number) {
         },
       },
       buyer: {
-        select: {
+        columns: {
           id: true,
           username: true,
           avatar: true,
         },
       },
       seller: {
-        select: {
+        columns: {
           id: true,
           username: true,
           avatar: true,
         },
       },
-      messages: {
-        orderBy: {
-          created_at: "asc",
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              avatar: true,
-            },
-          },
-        },
-      },
+      //   messages: {
+      //     orderBy: (messages, { asc }) => [asc(messages.created_at)],
+      //     with: {
+      //       user: {
+      //         columns: {
+      //           id: true,
+      //           username: true,
+      //           avatar: true,
+      //         },
+      //       },
+      //     },
+      //   },
     },
   });
 
@@ -55,12 +55,44 @@ async function getChatRoom(chatRoomId: number, userId: number) {
     return null;
   }
 
+  // Fetch messages separately or include if supported (Drizzle Relation Query supports nested).
+  // Trying to keep it simple. But wait, `chatRoom.messages` is used later.
+  // Re-adding messages to the query above.
+
+  // NOTE: Drizzle `orderBy` in `with` is supported.
+
+  /* Retrying consistent query with messages included */
+  const fullChatRoom = await db.query.chatRooms.findFirst({
+    where: eq(chatRooms.id, chatRoomId),
+    with: {
+      product: {
+        columns: { id: true, title: true, photo: true, price: true }
+      },
+      buyer: {
+        columns: { id: true, username: true, avatar: true }
+      },
+      seller: {
+        columns: { id: true, username: true, avatar: true }
+      },
+      messages: {
+        orderBy: (messages, { asc }) => [asc(messages.created_at)],
+        with: {
+          user: {
+            columns: { id: true, username: true, avatar: true }
+          }
+        }
+      }
+    }
+  });
+
+  if (!fullChatRoom) return null;
+
   // 권한 확인
-  if (chatRoom.buyerId !== userId && chatRoom.sellerId !== userId) {
+  if (fullChatRoom.buyerId !== userId && fullChatRoom.sellerId !== userId) {
     return null;
   }
 
-  return chatRoom;
+  return fullChatRoom;
 }
 
 async function getCurrentUser() {
@@ -68,9 +100,9 @@ async function getCurrentUser() {
   if (!session.id) {
     return null;
   }
-  const user = await db.user.findUnique({
-    where: { id: session.id },
-    select: {
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, session.id),
+    columns: {
       id: true,
       username: true,
       avatar: true,
@@ -85,20 +117,20 @@ export default async function ChatRoomDetail({
   params: Promise<{ id: string }>;
 }) {
   const session = await getSession();
-  
+
   if (!session.id) {
     return notFound();
   }
 
   const { id } = await params;
   const chatRoomId = Number(id);
-  
+
   if (isNaN(chatRoomId)) {
     return notFound();
   }
 
   const chatRoom = await getChatRoom(chatRoomId, session.id);
-  
+
   if (!chatRoom) {
     return notFound();
   }
@@ -143,7 +175,7 @@ export default async function ChatRoomDetail({
             <h2 className="text-lg font-semibold text-white">{otherUser.username}</h2>
           </Link>
         </div>
-        
+
         {/* 상품 정보 */}
         <Link
           href={`/products/${chatRoom.product.id}`}
